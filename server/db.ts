@@ -92,14 +92,27 @@ export function initDb() {
       id TEXT PRIMARY KEY,
       google_id TEXT UNIQUE,
       email TEXT NOT NULL UNIQUE,
+      password_hash TEXT,
+      salt TEXT,
       name TEXT NOT NULL,
       picture TEXT,
+      promptpay TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       last_login DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- Optimized Indexes for high volumes of expenses & fast aggregation
+    CREATE TABLE IF NOT EXISTS sessions (
+      token TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    -- Optimized Indexes for high volumes of expenses, sessions & fast aggregation
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
     CREATE INDEX IF NOT EXISTS idx_members_trip ON members(trip_id);
     CREATE INDEX IF NOT EXISTS idx_expenses_trip ON expenses(trip_id, date DESC);
     CREATE INDEX IF NOT EXISTS idx_expenses_payer ON expenses(paid_by_id);
@@ -110,15 +123,33 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_logs_trip ON activity_logs(trip_id, created_at DESC);
   `);
 
-  try {
-    db.exec(`ALTER TABLE members ADD COLUMN user_id TEXT`);
-  } catch (e) {
-    // Column already exists
-  }
+  // Migrations for existing database
+  const safeAlter = (sql: string) => {
+    try {
+      db.exec(sql);
+    } catch (e) {
+      // Column already exists or error ignored
+    }
+  };
 
-  try {
-    db.exec(`ALTER TABLE trips ADD COLUMN creator_user_id TEXT`);
-  } catch (e) {
-    // Column already exists
+  safeAlter(`ALTER TABLE users ADD COLUMN password_hash TEXT`);
+  safeAlter(`ALTER TABLE users ADD COLUMN salt TEXT`);
+  safeAlter(`ALTER TABLE users ADD COLUMN promptpay TEXT`);
+  safeAlter(`ALTER TABLE members ADD COLUMN user_id TEXT`);
+  safeAlter(`ALTER TABLE members ADD COLUMN role TEXT DEFAULT 'member'`);
+  safeAlter(`ALTER TABLE trips ADD COLUMN creator_user_id TEXT`);
+  safeAlter(`ALTER TABLE trips ADD COLUMN invite_code TEXT`);
+
+  safeAlter(`CREATE UNIQUE INDEX IF NOT EXISTS idx_trips_invite ON trips(invite_code)`);
+  safeAlter(`CREATE INDEX IF NOT EXISTS idx_members_user ON members(user_id)`);
+
+  // Ensure all existing trips have an invite_code
+  const tripsWithoutCode = db.prepare("SELECT id FROM trips WHERE invite_code IS NULL OR invite_code = ''").all() as { id: string }[];
+  if (tripsWithoutCode.length > 0) {
+    const updateCode = db.prepare('UPDATE trips SET invite_code = ? WHERE id = ?');
+    for (const t of tripsWithoutCode) {
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      updateCode.run(code, t.id);
+    }
   }
 }

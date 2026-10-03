@@ -28,15 +28,22 @@ import { ReceiptViewerModal } from './components/ReceiptViewerModal';
 import { TripSwitcherModal } from './components/TripSwitcherModal';
 import { ShareModal } from './components/ShareModal';
 import { LoginModal } from './components/LoginModal';
+import { AuthLandingScreen } from './components/AuthLandingScreen';
 
 export default function App() {
-  // Auth & User State
+  // Auth & Session State
   const [authUser, setAuthUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('hg_auth_user');
     return saved ? JSON.parse(saved) : null;
   });
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [googleClientId, setGoogleClientId] = useState('');
+
+  // Invite code parameter from URL (e.g. ?invite=ABC123 or ?code=ABC123)
+  const [urlInviteCode, setUrlInviteCode] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('invite') || params.get('code') || null;
+  });
 
   // Global & Trip State
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -79,7 +86,6 @@ export default function App() {
   const [showTripSwitcher, setShowTripSwitcher] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isSeedingBulk, setIsSeedingBulk] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
   // Active Trip object
   const currentTrip = useMemo(() => {
@@ -102,6 +108,26 @@ export default function App() {
     return calculateSettlementsFromBalances(balances, members);
   }, [balances, members]);
 
+  // Verify auth session on initial load
+  useEffect(() => {
+    const token = api.getAuthToken();
+    if (token) {
+      api.fetchCurrentUser().then(user => {
+        if (user) {
+          setAuthUser(user);
+          localStorage.setItem('hg_auth_user', JSON.stringify(user));
+        } else {
+          setAuthUser(null);
+          api.setAuthToken(null);
+        }
+      });
+    }
+
+    api.fetchAuthConfig().then(cfg => {
+      if (cfg?.googleClientId) setGoogleClientId(cfg.googleClientId);
+    });
+  }, []);
+
   // Save active trip & current user to LocalStorage
   useEffect(() => {
     if (activeTripId) {
@@ -118,8 +144,9 @@ export default function App() {
     }
   }, [currentUserId]);
 
-  // Load Trips initial
+  // Load Trips for authenticated user
   const loadTrips = useCallback(async () => {
+    if (!api.getAuthToken()) return;
     try {
       const data = await api.fetchTrips();
       setTrips(data);
@@ -133,19 +160,9 @@ export default function App() {
     }
   }, [activeTripId]);
 
-  useEffect(() => {
-    loadTrips();
-  }, [loadTrips]);
-
-  useEffect(() => {
-    api.fetchAuthConfig().then(cfg => {
-      if (cfg?.googleClientId) setGoogleClientId(cfg.googleClientId);
-    });
-  }, []);
-
   // Load active trip data (members, balances, settlements, logs)
   const refreshTripData = useCallback(async () => {
-    if (!activeTripId) return;
+    if (!activeTripId || !api.getAuthToken()) return;
     try {
       const [membersData, balancesData, settlementsData, logsData] = await Promise.all([
         api.fetchMembers(activeTripId),
@@ -160,7 +177,15 @@ export default function App() {
       setSettlements(settlementsData);
       setLogs(logsData);
 
-      // Auto-set current user if not selected or invalid
+      // Auto-set current user: prefer member linked to authUser.id
+      if (authUser) {
+        const myMember = membersData.find(m => m.user_id === authUser.id);
+        if (myMember) {
+          setCurrentUserId(myMember.id);
+          return;
+        }
+      }
+
       if (!currentUserId || !membersData.some(m => m.id === currentUserId)) {
         if (membersData.length > 0) {
           setCurrentUserId(membersData[0].id);
@@ -168,14 +193,12 @@ export default function App() {
       }
     } catch (err) {
       console.error('Failed to refresh trip data:', err);
-    } finally {
-      setIsLoading(false);
     }
-  }, [activeTripId, currentUserId]);
+  }, [activeTripId, currentUserId, authUser]);
 
   // Load expenses with pagination and filters
   const loadExpenses = useCallback(async () => {
-    if (!activeTripId) return;
+    if (!activeTripId || !api.getAuthToken()) return;
     try {
       const res = await api.fetchExpenses(activeTripId, {
         page: pagination.page,
@@ -193,17 +216,64 @@ export default function App() {
     }
   }, [activeTripId, pagination.page, pagination.limit, searchQuery, selectedCategory, selectedPayer, sortBy, order]);
 
+  // When authUser is logged in, load trips and data
   useEffect(() => {
-    if (activeTripId) {
-      refreshTripData();
+    if (authUser) {
+      loadTrips();
     }
-  }, [activeTripId, refreshTripData]);
+  }, [authUser, loadTrips]);
 
   useEffect(() => {
-    if (activeTripId) {
+    if (authUser && activeTripId) {
+      refreshTripData();
       loadExpenses();
     }
-  }, [activeTripId, loadExpenses]);
+  }, [authUser, activeTripId, refreshTripData, loadExpenses]);
+
+  // Handle Authentication Success (Login or Register)
+  const handleAuthSuccess = async (user: User) => {
+    setAuthUser(user);
+    localStorage.setItem('hg_auth_user', JSON.stringify(user));
+
+    // If arrived via invite code in URL, join the trip automatically!
+    if (urlInviteCode) {
+      try {
+        const joinRes = await api.joinTripByInviteCode(urlInviteCode);
+        if (joinRes.tripId) {
+          setActiveTripId(joinRes.tripId);
+        }
+        // Clear invite param from URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete('invite');
+        url.searchParams.delete('code');
+        window.history.replaceState({}, '', url.toString());
+        setUrlInviteCode(null);
+      } catch (err: any) {
+        console.error('Auto join failed:', err);
+      }
+    }
+
+    await loadTrips();
+  };
+
+  const handleLogout = async () => {
+    await api.logout();
+    setAuthUser(null);
+    setTrips([]);
+    setMembers([]);
+    setExpenses([]);
+    setBalances([]);
+    setSettlements([]);
+    setLogs([]);
+  };
+
+  const handleJoinTrip = async (inviteCode: string) => {
+    const res = await api.joinTripByInviteCode(inviteCode);
+    await loadTrips();
+    if (res.tripId) {
+      setActiveTripId(res.tripId);
+    }
+  };
 
   // Action Handlers
   const handleSaveExpense = async (payload: {
@@ -222,15 +292,14 @@ export default function App() {
     if (!activeTripId) return;
     await api.addExpense(activeTripId, {
       ...payload,
-      creatorName: currentUser?.name || 'สมาชิก',
+      creatorName: authUser?.name || currentUser?.name || 'สมาชิก',
     });
-    // Refresh both list and aggregated balances
     await Promise.all([loadExpenses(), refreshTripData(), loadTrips()]);
   };
 
   const handleDeleteExpense = async (id: string) => {
     if (!activeTripId) return;
-    await api.deleteExpense(activeTripId, id, currentUser?.name || 'สมาชิก');
+    await api.deleteExpense(activeTripId, id, authUser?.name || currentUser?.name || 'สมาชิก');
     await Promise.all([loadExpenses(), refreshTripData(), loadTrips()]);
   };
 
@@ -249,7 +318,6 @@ export default function App() {
       tx.amount,
       'โอนผ่าน PromptPay QR'
     );
-    // Refresh balances and settlements so debt deduction reflects immediately!
     await refreshTripData();
   };
 
@@ -275,14 +343,25 @@ export default function App() {
     await loadTrips();
   };
 
-  const handleCreateTrip = async (name: string, creatorName?: string, promptPay?: string) => {
-    const res = await api.createTrip(name, creatorName, promptPay);
+  const handleCreateTrip = async (name: string, promptPay?: string) => {
+    const res = await api.createTrip(name, promptPay);
     await loadTrips();
     setActiveTripId(res.trip.id);
     if (res.defaultMemberId) {
       setCurrentUserId(res.defaultMemberId);
     }
   };
+
+  // 🛡️ DATA PROTECTION GUARD: Unauthenticated users MUST see the Auth Landing Screen!
+  if (!authUser) {
+    return (
+      <AuthLandingScreen
+        inviteCode={urlInviteCode}
+        googleClientId={googleClientId}
+        onAuthSuccess={handleAuthSuccess}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex justify-center selection:bg-emerald-500 selection:text-white antialiased font-sans">
@@ -424,6 +503,7 @@ export default function App() {
             currentTripId={activeTripId}
             onSelectTrip={id => setActiveTripId(id)}
             onCreateTrip={handleCreateTrip}
+            onJoinTrip={handleJoinTrip}
             onClose={() => setShowTripSwitcher(false)}
           />
         )}
@@ -439,14 +519,8 @@ export default function App() {
           <LoginModal
             currentUser={authUser}
             googleClientId={googleClientId}
-            onLoginSuccess={user => {
-              setAuthUser(user);
-              localStorage.setItem('hg_auth_user', JSON.stringify(user));
-            }}
-            onLogout={() => {
-              setAuthUser(null);
-              localStorage.removeItem('hg_auth_user');
-            }}
+            onLoginSuccess={handleAuthSuccess}
+            onLogout={handleLogout}
             onClose={() => setShowLoginModal(false)}
           />
         )}

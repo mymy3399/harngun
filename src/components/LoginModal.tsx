@@ -41,7 +41,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               setIsLoading(true);
               setErrorMsg('');
               try {
-                const user = await loginWithGoogleCredential(response.credential);
+                const { user } = await loginWithGoogleCredential(response.credential);
                 onLoginSuccess(user);
                 onClose();
               } catch (err: any) {
@@ -70,7 +70,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setIsLoading(true);
     setErrorMsg('');
     try {
-      const user = await loginWithGoogleProfile({
+      const { user } = await loginWithGoogleProfile({
         email,
         name,
         picture,

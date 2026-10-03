@@ -12,7 +12,81 @@ import {
 
 const BASE_URL = '/api';
 
-export async function loginWithGoogleCredential(credential: string): Promise<User> {
+export function getAuthToken(): string | null {
+  return localStorage.getItem('hg_auth_token');
+}
+
+export function setAuthToken(token: string | null) {
+  if (token) {
+    localStorage.setItem('hg_auth_token', token);
+  } else {
+    localStorage.removeItem('hg_auth_token');
+  }
+}
+
+// Authenticated fetch wrapper
+export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = getAuthToken();
+  const headers = new Headers(options.headers || {});
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const res = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  if (res.status === 401) {
+    // Session expired
+    setAuthToken(null);
+    localStorage.removeItem('hg_auth_user');
+  }
+
+  return res;
+}
+
+// Auth API
+export async function registerWithEmail(
+  email: string,
+  password: string,
+  name: string,
+  promptpay?: string
+): Promise<{ token: string; user: User }> {
+  const res = await fetch(`${BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, name, promptpay }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'สมัครสมาชิกไม่สำเร็จ');
+  }
+  const data = await res.json();
+  setAuthToken(data.token);
+  return data;
+}
+
+export async function loginWithEmail(
+  email: string,
+  password: string
+): Promise<{ token: string; user: User }> {
+  const res = await fetch(`${BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'เข้าสู่ระบบไม่สำเร็จ');
+  }
+  const data = await res.json();
+  setAuthToken(data.token);
+  return data;
+}
+
+export async function loginWithGoogleCredential(credential: string): Promise<{ token: string; user: User }> {
   const res = await fetch(`${BASE_URL}/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -20,10 +94,11 @@ export async function loginWithGoogleCredential(credential: string): Promise<Use
   });
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(err.error || 'Failed to login with Google');
+    throw new Error(err.error || 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ');
   }
   const data = await res.json();
-  return data.user;
+  setAuthToken(data.token);
+  return data;
 }
 
 export async function loginWithGoogleProfile(profile: {
@@ -31,7 +106,7 @@ export async function loginWithGoogleProfile(profile: {
   name?: string;
   picture?: string;
   googleId?: string;
-}): Promise<User> {
+}): Promise<{ token: string; user: User }> {
   const res = await fetch(`${BASE_URL}/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -39,17 +114,34 @@ export async function loginWithGoogleProfile(profile: {
   });
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(err.error || 'Failed to login with Google');
+    throw new Error(err.error || 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ');
   }
   const data = await res.json();
-  return data.user;
+  setAuthToken(data.token);
+  return data;
 }
 
-export async function fetchCurrentUser(userId: string): Promise<User | null> {
-  const res = await fetch(`${BASE_URL}/auth/me?userId=${userId}`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.user;
+export async function fetchCurrentUser(): Promise<User | null> {
+  const token = getAuthToken();
+  if (!token) return null;
+
+  try {
+    const res = await authFetch(`${BASE_URL}/auth/me`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.user;
+  } catch {
+    return null;
+  }
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await authFetch(`${BASE_URL}/auth/logout`, { method: 'POST' });
+  } finally {
+    setAuthToken(null);
+    localStorage.removeItem('hg_auth_user');
+  }
 }
 
 export async function fetchAuthConfig(): Promise<{ googleClientId: string }> {
@@ -62,22 +154,21 @@ export async function fetchAuthConfig(): Promise<{ googleClientId: string }> {
   }
 }
 
+// Trips API
 export async function fetchTrips(): Promise<Trip[]> {
-  const res = await fetch(`${BASE_URL}/trips`);
+  const res = await authFetch(`${BASE_URL}/trips`);
   if (!res.ok) throw new Error('Failed to fetch trips');
   return res.json();
 }
 
 export async function createTrip(
   name: string,
-  creatorName?: string,
-  promptPay?: string,
-  avatar?: string
+  promptPay?: string
 ): Promise<{ trip: Trip; defaultMemberId: string }> {
-  const res = await fetch(`${BASE_URL}/trips`, {
+  const res = await authFetch(`${BASE_URL}/trips`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, creatorName, promptPay, avatar }),
+    body: JSON.stringify({ name, promptPay }),
   });
   if (!res.ok) {
     const err = await res.json();
@@ -87,7 +178,7 @@ export async function createTrip(
 }
 
 export async function updateTripName(id: string, name: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/trips/${id}`, {
+  const res = await authFetch(`${BASE_URL}/trips/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
@@ -95,8 +186,41 @@ export async function updateTripName(id: string, name: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to update trip name');
 }
 
+export async function fetchTripInvitePreview(code: string): Promise<{
+  id: string;
+  name: string;
+  invite_code: string;
+  member_count: number;
+}> {
+  const res = await fetch(`${BASE_URL}/trips/invite/${code}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'ไม่พบทริปตามรหัสเชิญนี้');
+  }
+  return res.json();
+}
+
+export async function joinTripByInviteCode(inviteCode: string): Promise<{
+  success: boolean;
+  alreadyJoined?: boolean;
+  tripId: string;
+  tripName: string;
+}> {
+  const res = await authFetch(`${BASE_URL}/trips/join`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inviteCode }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'เข้าร่วมกลุ่มไม่สำเร็จ');
+  }
+  return res.json();
+}
+
+// Members API
 export async function fetchMembers(tripId: string): Promise<Member[]> {
-  const res = await fetch(`${BASE_URL}/trips/${tripId}/members`);
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/members`);
   if (!res.ok) throw new Error('Failed to fetch members');
   return res.json();
 }
@@ -107,7 +231,7 @@ export async function addMember(
   promptPay: string,
   avatar: string
 ): Promise<Member> {
-  const res = await fetch(`${BASE_URL}/trips/${tripId}/members`, {
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/members`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, promptPay, avatar }),
@@ -119,6 +243,7 @@ export async function addMember(
   return res.json();
 }
 
+// Expenses API
 export async function fetchExpenses(
   tripId: string,
   params: {
@@ -143,7 +268,7 @@ export async function fetchExpenses(
   if (params.sortBy) query.set('sortBy', params.sortBy);
   if (params.order) query.set('order', params.order);
 
-  const res = await fetch(`${BASE_URL}/trips/${tripId}/expenses?${query.toString()}`);
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/expenses?${query.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch expenses');
   return res.json();
 }
@@ -165,7 +290,7 @@ export async function addExpense(
     creatorName?: string;
   }
 ): Promise<Expense> {
-  const res = await fetch(`${BASE_URL}/trips/${tripId}/expenses`, {
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/expenses`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -182,7 +307,7 @@ export async function deleteExpense(
   expenseId: string,
   deletedBy?: string
 ): Promise<void> {
-  const res = await fetch(`${BASE_URL}/trips/${tripId}/expenses/${expenseId}`, {
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/expenses/${expenseId}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ deletedBy }),
@@ -191,7 +316,7 @@ export async function deleteExpense(
 }
 
 export async function seedBulkExpenses(tripId: string, count: number = 50): Promise<number> {
-  const res = await fetch(`${BASE_URL}/trips/${tripId}/expenses/seed-bulk`, {
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/expenses/seed-bulk`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ count }),
@@ -201,17 +326,18 @@ export async function seedBulkExpenses(tripId: string, count: number = 50): Prom
   return data.addedCount;
 }
 
+// Balances & Settlements API
 export async function fetchBalances(tripId: string): Promise<{
   balances: MemberBalance[];
   totalGroupExpense: number;
 }> {
-  const res = await fetch(`${BASE_URL}/trips/${tripId}/balances`);
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/balances`);
   if (!res.ok) throw new Error('Failed to fetch balances');
   return res.json();
 }
 
 export async function fetchSettlements(tripId: string): Promise<Settlement[]> {
-  const res = await fetch(`${BASE_URL}/trips/${tripId}/settlements`);
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/settlements`);
   if (!res.ok) throw new Error('Failed to fetch settlements');
   return res.json();
 }
@@ -223,7 +349,7 @@ export async function recordSettlement(
   amount: number,
   note?: string
 ): Promise<Settlement> {
-  const res = await fetch(`${BASE_URL}/trips/${tripId}/settlements`, {
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/settlements`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fromMemberId, toMemberId, amount, note }),
@@ -233,14 +359,14 @@ export async function recordSettlement(
 }
 
 export async function undoSettlement(settlementId: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/trips/any/settlements/${settlementId}`, {
+  const res = await authFetch(`${BASE_URL}/trips/any/settlements/${settlementId}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error('Failed to undo settlement');
 }
 
 export async function fetchLogs(tripId: string): Promise<ActivityLog[]> {
-  const res = await fetch(`${BASE_URL}/trips/${tripId}/logs`);
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/logs`);
   if (!res.ok) throw new Error('Failed to fetch logs');
   return res.json();
 }
@@ -249,7 +375,7 @@ export async function uploadReceiptFile(file: File): Promise<string> {
   const formData = new FormData();
   formData.append('receipt', file);
 
-  const res = await fetch(`${BASE_URL}/upload`, {
+  const res = await authFetch(`${BASE_URL}/upload`, {
     method: 'POST',
     body: formData,
   });

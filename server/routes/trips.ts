@@ -1,19 +1,124 @@
 import { Router } from 'express';
 import { db } from '../db.js';
+import { requireAuth, AuthenticatedRequest } from '../middleware/auth.js';
 
 export const tripsRouter = Router();
 
-// GET all trips
-tripsRouter.get('/', (req, res) => {
+// GET /api/trips/invite/:code - Public invite preview (before login)
+tripsRouter.get('/invite/:code', (req, res) => {
   try {
-    const trips = db.prepare(`
+    const code = req.params.code.toUpperCase().trim();
+    const trip = db.prepare(`
+      SELECT t.id, t.name, t.invite_code, t.created_at,
+        (SELECT COUNT(*) FROM members WHERE trip_id = t.id) as member_count
+      FROM trips t
+      WHERE t.invite_code = ?
+    `).get(code) as any;
+
+    if (!trip) {
+      return res.status(404).json({ error: 'ไม่พบทริปตามรหัสเชิญนี้ หรือลิงก์อาจหมดอายุ' });
+    }
+
+    res.json(trip);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Protect all following routes with requireAuth
+tripsRouter.use(requireAuth);
+
+// POST /api/trips/join - Join trip via invite code
+tripsRouter.post('/join', (req: AuthenticatedRequest, res) => {
+  try {
+    const { inviteCode } = req.body;
+    if (!inviteCode || !inviteCode.trim()) {
+      return res.status(400).json({ error: 'กรุณาระบุรหัสเชิญเข้ากลุ่ม' });
+    }
+
+    const cleanCode = inviteCode.toUpperCase().trim();
+    const trip = db.prepare('SELECT id, name FROM trips WHERE invite_code = ?').get(cleanCode) as any;
+
+    if (!trip) {
+      return res.status(404).json({ error: 'ไม่พบกลุ่มตามรหัสเชิญนี้' });
+    }
+
+    const user = req.user!;
+
+    // Check if user is already a member
+    const existingMember = db.prepare(`
+      SELECT id FROM members WHERE trip_id = ? AND user_id = ?
+    `).get(trip.id, user.id);
+
+    if (existingMember) {
+      return res.json({
+        success: true,
+        alreadyJoined: true,
+        tripId: trip.id,
+        tripName: trip.name,
+      });
+    }
+
+    // Add user as member
+    const memberId = `m-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+
+    db.transaction(() => {
+      db.prepare(`
+        INSERT INTO members (id, trip_id, user_id, name, promptpay, avatar, role, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'member', datetime('now'))
+      `).run(
+        memberId,
+        trip.id,
+        user.id,
+        user.name,
+        user.promptpay || '',
+        user.picture || '🧑‍🤝‍🧑'
+      );
+
+      db.prepare(`
+        INSERT INTO activity_logs (id, trip_id, text, created_at)
+        VALUES (?, ?, ?, datetime('now'))
+      `).run(`log-${Date.now()}`, trip.id, `${user.name} เข้าร่วมกลุ่มผ่านลิงก์เชิญ 🎉`);
+    })();
+
+    res.status(201).json({
+      success: true,
+      tripId: trip.id,
+      tripName: trip.name,
+      memberId,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET all trips for the authenticated user
+tripsRouter.get('/', (req: AuthenticatedRequest, res) => {
+  try {
+    const userId = req.user!.id;
+
+    // Fetch trips where user is creator, member, or sample trip
+    let trips = db.prepare(`
       SELECT t.*, 
         (SELECT COUNT(*) FROM members WHERE trip_id = t.id) as member_count,
         (SELECT COUNT(*) FROM expenses WHERE trip_id = t.id) as expense_count,
         COALESCE((SELECT SUM(total_amount) FROM expenses WHERE trip_id = t.id), 0) as total_expense
       FROM trips t
+      WHERE t.creator_user_id = ? 
+         OR t.id IN (SELECT trip_id FROM members WHERE user_id = ?)
+         OR t.id = 'trip-chiangmai'
       ORDER BY t.updated_at DESC
-    `).all();
+    `).all(userId, userId) as any[];
+
+    // Ensure invite_code is present
+    trips.forEach(t => {
+      if (!t.invite_code) {
+        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        db.prepare('UPDATE trips SET invite_code = ? WHERE id = ?').run(code, t.id);
+        t.invite_code = code;
+      }
+    });
+
     res.json(trips);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -21,9 +126,9 @@ tripsRouter.get('/', (req, res) => {
 });
 
 // GET single trip
-tripsRouter.get('/:id', (req, res) => {
+tripsRouter.get('/:id', (req: AuthenticatedRequest, res) => {
   try {
-    const trip = db.prepare('SELECT * FROM trips WHERE id = ?').get(req.params.id);
+    const trip = db.prepare('SELECT * FROM trips WHERE id = ?').get(req.params.id) as any;
     if (!trip) return res.status(404).json({ error: 'Trip not found' });
     res.json(trip);
   } catch (err: any) {
@@ -32,37 +137,40 @@ tripsRouter.get('/:id', (req, res) => {
 });
 
 // POST create trip
-tripsRouter.post('/', (req, res) => {
+tripsRouter.post('/', (req: AuthenticatedRequest, res) => {
   try {
-    const { name, creatorName, promptPay, avatar } = req.body;
+    const { name, promptPay } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Trip name is required' });
     }
 
+    const user = req.user!;
     const tripId = `trip-${Date.now()}`;
     const memberId = `m-${Date.now()}`;
+    const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
     const createTx = db.transaction(() => {
       db.prepare(`
-        INSERT INTO trips (id, name, created_at, updated_at)
-        VALUES (?, ?, datetime('now'), datetime('now'))
-      `).run(tripId, name.trim());
+        INSERT INTO trips (id, name, creator_user_id, invite_code, created_at, updated_at)
+        VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).run(tripId, name.trim(), user.id, inviteCode);
 
       db.prepare(`
-        INSERT INTO members (id, trip_id, name, promptpay, avatar, created_at)
-        VALUES (?, ?, ?, ?, ?, datetime('now'))
+        INSERT INTO members (id, trip_id, user_id, name, promptpay, avatar, role, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'owner', datetime('now'))
       `).run(
         memberId,
         tripId,
-        creatorName && creatorName.trim() ? creatorName.trim() : 'ฉัน',
-        promptPay && promptPay.trim() ? promptPay.trim() : '',
-        avatar || '😎'
+        user.id,
+        user.name,
+        promptPay && promptPay.trim() ? promptPay.trim() : (user.promptpay || ''),
+        user.picture || '😎'
       );
 
       db.prepare(`
         INSERT INTO activity_logs (id, trip_id, text, created_at)
         VALUES (?, ?, ?, datetime('now'))
-      `).run(`log-${Date.now()}`, tripId, `สร้างกลุ่ม "${name.trim()}"`);
+      `).run(`log-${Date.now()}`, tripId, `${user.name} สร้างกลุ่ม "${name.trim()}"`);
     });
 
     createTx();
@@ -75,7 +183,7 @@ tripsRouter.post('/', (req, res) => {
 });
 
 // PUT update trip name
-tripsRouter.put('/:id', (req, res) => {
+tripsRouter.put('/:id', (req: AuthenticatedRequest, res) => {
   try {
     const { name } = req.body;
     if (!name || !name.trim()) {
@@ -92,7 +200,7 @@ tripsRouter.put('/:id', (req, res) => {
 });
 
 // DELETE trip
-tripsRouter.delete('/:id', (req, res) => {
+tripsRouter.delete('/:id', (req: AuthenticatedRequest, res) => {
   try {
     db.prepare('DELETE FROM trips WHERE id = ?').run(req.params.id);
     res.json({ success: true });
@@ -102,7 +210,7 @@ tripsRouter.delete('/:id', (req, res) => {
 });
 
 // POST seed bulk test bills
-tripsRouter.post('/:id/seed-bulk', async (req, res) => {
+tripsRouter.post('/:id/seed-bulk', async (req: AuthenticatedRequest, res) => {
   try {
     const { generateBulkExpenses } = await import('../seed.js');
     const count = parseInt(req.body.count as string, 10) || 50;

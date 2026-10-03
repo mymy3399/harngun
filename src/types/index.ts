@@ -6,6 +6,7 @@ export interface Trip {
   id: string;
   name: string;
   creator_user_id?: string;
+  invite_code?: string;
   created_at: string;
   updated_at: string;
 }
@@ -16,15 +17,18 @@ export interface User {
   email: string;
   name: string;
   picture?: string;
+  promptpay?: string;
   created_at?: string;
 }
 
 export interface Member {
   id: string;
   trip_id: string;
+  user_id?: string;
   name: string;
   promptpay: string;
   avatar: string;
+  role?: string;
   created_at?: string;
 }
 

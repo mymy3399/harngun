@@ -60,8 +60,10 @@ app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 // Serve static uploads
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-// Image upload endpoint
-app.post('/api/upload', upload.single('receipt'), (req, res) => {
+import { requireAuth } from './middleware/auth.js';
+
+// Image upload endpoint (protected)
+app.post('/api/upload', requireAuth, upload.single('receipt'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No image uploaded' });
   }
@@ -70,13 +72,13 @@ app.post('/api/upload', upload.single('receipt'), (req, res) => {
 });
 
 // Mount modular API routers
-app.use('/api/trips', tripsRouter);
-app.use('/api/trips/:tripId/members', membersRouter);
-app.use('/api/trips/:tripId/expenses', expensesRouter);
-app.use('/api/trips/:tripId/settlements', settlementsRouter);
-app.use('/api/trips/:tripId/balances', balancesRouter);
-app.use('/api/trips/:tripId/logs', logsRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/trips', tripsRouter); // Has its own public invite preview and requireAuth
+app.use('/api/trips/:tripId/members', requireAuth, membersRouter);
+app.use('/api/trips/:tripId/expenses', requireAuth, expensesRouter);
+app.use('/api/trips/:tripId/settlements', requireAuth, settlementsRouter);
+app.use('/api/trips/:tripId/balances', requireAuth, balancesRouter);
+app.use('/api/trips/:tripId/logs', requireAuth, logsRouter);
 
 // Serve frontend static build if available (production mode)
 const CLIENT_DIST = path.resolve(__dirname, '../dist');

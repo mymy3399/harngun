@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Share2, Copy, Check } from 'lucide-react';
+import { X, Share2, Copy, Check, Users, QrCode as QrIcon } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Trip } from '../types';
 
 interface ShareModalProps {
@@ -8,18 +9,27 @@ interface ShareModalProps {
 }
 
 export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
-  const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
-  const shareUrl = `${window.location.origin}${window.location.pathname}?tripId=${trip?.id || ''}`;
+  const inviteCode = trip?.invite_code || '';
+  const shareUrl = `${window.location.origin}/?invite=${inviteCode}`;
 
-  const handleCopy = () => {
+  const handleCopyLink = () => {
     navigator.clipboard?.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleCopyCode = () => {
+    navigator.clipboard?.writeText(inviteCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-5 text-center shadow-2xl relative">
         <button
           onClick={onClose}
@@ -31,26 +41,67 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
         <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-2xl w-fit mx-auto mb-2">
           <Share2 className="w-6 h-6" />
         </div>
-        <h3 className="font-bold text-base text-white">ชวนเพื่อนเข้ากลุ่ม</h3>
+        <h3 className="font-bold text-base text-white">เชิญเพื่อนเข้ากลุ่มทริป</h3>
         <p className="text-xs text-slate-400 mt-1">
-          แชร์ลิงก์นี้ให้เพื่อนใน LINE หรือกลุ่มแชท เพื่อเปิดทริป <strong>"{trip?.name}"</strong> บนอุปกรณ์ของพวกเขา
+          ทริป <strong>"{trip?.name}"</strong>
         </p>
 
-        <div className="my-4 bg-slate-950 p-3 rounded-2xl border border-slate-800 flex items-center justify-between text-left">
-          <span className="text-xs text-slate-300 font-mono truncate mr-2">
-            {shareUrl}
-          </span>
+        {/* Invite Code Box */}
+        <div className="my-3 bg-slate-950 p-3 rounded-2xl border border-slate-800 flex items-center justify-between">
+          <div className="text-left">
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider block">รหัสเชิญกลุ่ม (Invite Code)</span>
+            <span className="text-lg font-black text-emerald-400 font-mono tracking-widest">
+              {inviteCode}
+            </span>
+          </div>
           <button
-            onClick={handleCopy}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 flex-shrink-0 transition"
+            onClick={handleCopyCode}
+            className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition"
           >
-            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copied ? 'ก๊อปแล้ว' : 'คัดลอก'}</span>
+            {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copiedCode ? 'ก๊อปแล้ว' : 'คัดลอกรหัส'}</span>
           </button>
         </div>
 
-        <div className="text-[11px] text-slate-500 leading-relaxed bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/60">
-          💡 ระบบใช้ฐานข้อมูล SQLite ประสิทธิภาพสูง ข้อมูลถูกบันทึกปลอดภัย รองรับการเพิ่มบิลและคำนวณตัดหนี้ได้ไม่จำกัด
+        {/* Share Link Box */}
+        <div className="my-2 bg-slate-950 p-3 rounded-2xl border border-slate-800 flex items-center justify-between text-left">
+          <div className="min-w-0 pr-2">
+            <span className="text-[10px] text-slate-500 block">ลิงก์สมัครและเข้ากลุ่ม</span>
+            <span className="text-xs text-slate-300 font-mono truncate block">
+              {shareUrl}
+            </span>
+          </div>
+          <button
+            onClick={handleCopyLink}
+            className="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 flex-shrink-0 transition shadow-sm"
+          >
+            {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copiedLink ? 'ก๊อปแล้ว' : 'คัดลอกลิงก์'}</span>
+          </button>
+        </div>
+
+        {/* Toggle QR code */}
+        <div className="pt-2">
+          <button
+            onClick={() => setShowQr(!showQr)}
+            className="text-xs text-slate-400 hover:text-emerald-400 inline-flex items-center gap-1.5 transition"
+          >
+            <QrIcon className="w-3.5 h-3.5" />
+            <span>{showQr ? 'ซ่อน QR เชิญ' : 'แสดง QR สแกนเข้ากลุ่ม'}</span>
+          </button>
+
+          {showQr && (
+            <div className="mt-3 p-3 bg-white rounded-2xl mx-auto w-fit shadow-xl animate-in zoom-in-95">
+              <QRCodeSVG value={shareUrl} size={150} level="M" />
+              <span className="text-[10px] text-slate-700 font-bold block mt-1.5">
+                สแกนเพื่อเข้าร่วมกลุ่ม
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 text-[11px] text-slate-400 leading-relaxed bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/60 text-left">
+          ✨ <strong>วิธีใช้งาน:</strong> ส่งลิงก์นี้เข้า LINE กลุ่ม เมื่อเพื่อนคลิกเปิดและเข้าสู่ระบบด้วย Google หรือสมัครสมาชิก จะถูกเพิ่มเข้าเป็นสมาชิกกลุ่มนี้และเริ่มบันทึกบิลได้ทันที
         </div>
       </div>
     </div>
