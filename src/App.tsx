@@ -39,7 +39,6 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [googleClientId, setGoogleClientId] = useState('');
 
   // Invite code parameter from URL (e.g. ?invite=ABC123 or ?code=ABC123)
   const [urlInviteCode, setUrlInviteCode] = useState<string | null>(() => {
@@ -125,10 +124,6 @@ export default function App() {
         }
       });
     }
-
-    api.fetchAuthConfig().then(cfg => {
-      if (cfg?.googleClientId) setGoogleClientId(cfg.googleClientId);
-    });
   }, []);
 
   // Save active trip & current user to LocalStorage
@@ -366,8 +361,6 @@ export default function App() {
     return (
       <AuthLandingScreen
         inviteCode={urlInviteCode}
-        googleClientId={googleClientId}
-        onUpdateGoogleClientId={setGoogleClientId}
         onAuthSuccess={handleAuthSuccess}
       />
     );
@@ -546,8 +539,6 @@ export default function App() {
         {showLoginModal && (
           <LoginModal
             currentUser={authUser}
-            googleClientId={googleClientId}
-            onUpdateGoogleClientId={setGoogleClientId}
             onLoginSuccess={handleAuthSuccess}
             onLogout={handleLogout}
             onClose={() => setShowLoginModal(false)}
