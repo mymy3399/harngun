@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, History, ArrowRightLeft } from 'lucide-react';
+import { AlertCircle, History, ArrowRightLeft, Plus } from 'lucide-react';
 import { Member, MemberBalance, ActivityLog, RecommendedTransaction } from '../types';
 import { formatBaht, formatDateTimeThai } from '../utils/currency';
 
@@ -10,6 +10,7 @@ interface SummaryTabProps {
   logs: ActivityLog[];
   currentUserId: string;
   onNavigateToSettle: () => void;
+  onOpenAddExpense: () => void;
 }
 
 export const SummaryTab: React.FC<SummaryTabProps> = ({
@@ -19,11 +20,29 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
   logs,
   currentUserId,
   onNavigateToSettle,
+  onOpenAddExpense,
 }) => {
   const currentUserOwes = transactions.some(t => t.fromId === currentUserId);
 
   return (
-    <div className="p-4 space-y-5">
+    <div className="p-4 space-y-4">
+      {/* Quick Action: Add Expense */}
+      <div className="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-teal-950/70 p-3.5 rounded-2xl border border-emerald-500/40 flex items-center justify-between shadow-sm">
+        <div>
+          <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span>บันทึกค่าใช้จ่ายทริป</span>
+          </h4>
+          <p className="text-[11px] text-slate-400 mt-0.5">หารเท่ากัน ระบุยอดตรงตัว หรือตามสัดส่วน</p>
+        </div>
+        <button
+          onClick={onOpenAddExpense}
+          className="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/50 transition flex-shrink-0"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>+ เพิ่มบิลใหม่</span>
+        </button>
+      </div>
       {/* Quick Alert if User Owes Money */}
       {currentUserOwes && (
         <div className="bg-amber-950/40 border border-amber-500/40 p-3.5 rounded-2xl flex items-center justify-between text-xs text-amber-200 shadow-sm animate-in fade-in">

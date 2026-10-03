@@ -180,10 +180,10 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
         <span>พบ {pagination.totalItems.toLocaleString()} รายการ</span>
         <button
           onClick={onOpenNewModal}
-          className="text-emerald-400 font-medium hover:text-emerald-300 flex items-center gap-1"
+          className="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/40 transition"
         >
-          <PlusCircle className="w-3.5 h-3.5" />
-          <span>เพิ่มบิลใหม่</span>
+          <PlusCircle className="w-4 h-4 stroke-[2.5]" />
+          <span>+ เพิ่มบิลใหม่</span>
         </button>
       </div>
 

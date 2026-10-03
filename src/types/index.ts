@@ -5,8 +5,18 @@ export type ExpenseCategory = 'food' | 'stay' | 'transport' | 'activity' | 'shop
 export interface Trip {
   id: string;
   name: string;
+  creator_user_id?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface User {
+  id: string;
+  google_id?: string;
+  email: string;
+  name: string;
+  picture?: string;
+  created_at?: string;
 }
 
 export interface Member {

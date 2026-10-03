@@ -9,7 +9,9 @@ import {
   RecommendedTransaction,
   ExpenseCategory,
   SplitType,
+  User,
 } from './types';
+import { Plus } from 'lucide-react';
 import * as api from './api/client';
 import { calculateSettlementsFromBalances } from './utils/settlement';
 
@@ -25,8 +27,17 @@ import { PromptPayQRModal } from './components/PromptPayQRModal';
 import { ReceiptViewerModal } from './components/ReceiptViewerModal';
 import { TripSwitcherModal } from './components/TripSwitcherModal';
 import { ShareModal } from './components/ShareModal';
+import { LoginModal } from './components/LoginModal';
 
 export default function App() {
+  // Auth & User State
+  const [authUser, setAuthUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('hg_auth_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState('');
+
   // Global & Trip State
   const [trips, setTrips] = useState<Trip[]>([]);
   const [activeTripId, setActiveTripId] = useState<string>(() => {
@@ -125,6 +136,12 @@ export default function App() {
   useEffect(() => {
     loadTrips();
   }, [loadTrips]);
+
+  useEffect(() => {
+    api.fetchAuthConfig().then(cfg => {
+      if (cfg?.googleClientId) setGoogleClientId(cfg.googleClientId);
+    });
+  }, []);
 
   // Load active trip data (members, balances, settlements, logs)
   const refreshTripData = useCallback(async () => {
@@ -276,10 +293,13 @@ export default function App() {
           currentTrip={currentTrip}
           members={members}
           currentUserId={currentUserId}
+          authUser={authUser}
           onUserChange={setCurrentUserId}
           onUpdateTripName={handleUpdateTripName}
           onOpenTripSwitcher={() => setShowTripSwitcher(true)}
           onOpenShareModal={() => setShowShareModal(true)}
+          onOpenAddExpense={() => setShowAddModal(true)}
+          onOpenLogin={() => setShowLoginModal(true)}
         />
 
         {/* Current User Balance Banner */}
@@ -312,6 +332,7 @@ export default function App() {
               logs={logs}
               currentUserId={currentUserId}
               onNavigateToSettle={() => setActiveTab('settle')}
+              onOpenAddExpense={() => setShowAddModal(true)}
             />
           )}
 
@@ -413,6 +434,34 @@ export default function App() {
             onClose={() => setShowShareModal(false)}
           />
         )}
+
+        {showLoginModal && (
+          <LoginModal
+            currentUser={authUser}
+            googleClientId={googleClientId}
+            onLoginSuccess={user => {
+              setAuthUser(user);
+              localStorage.setItem('hg_auth_user', JSON.stringify(user));
+            }}
+            onLogout={() => {
+              setAuthUser(null);
+              localStorage.removeItem('hg_auth_user');
+            }}
+            onClose={() => setShowLoginModal(false)}
+          />
+        )}
+
+        {/* Floating Action Button (FAB) - Always prominently visible */}
+        <div className="fixed bottom-6 right-6 sm:right-8 z-40">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="group bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-white font-bold p-3.5 sm:px-5 sm:py-3.5 rounded-full shadow-2xl shadow-emerald-500/50 flex items-center gap-2 transition-all transform active:scale-95 hover:scale-105 border border-emerald-300/40"
+            title="เพิ่มรายการบิลใหม่"
+          >
+            <Plus className="w-5 h-5 stroke-[3] group-hover:rotate-90 transition-transform duration-200" />
+            <span className="text-xs sm:text-sm font-bold tracking-wide">เพิ่มรายการบิล</span>
+          </button>
+        </div>
       </div>
     </div>
   );

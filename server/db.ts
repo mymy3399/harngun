@@ -88,7 +88,18 @@ export function initDb() {
       FOREIGN KEY(trip_id) REFERENCES trips(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      google_id TEXT UNIQUE,
+      email TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      picture TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_login DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- Optimized Indexes for high volumes of expenses & fast aggregation
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE INDEX IF NOT EXISTS idx_members_trip ON members(trip_id);
     CREATE INDEX IF NOT EXISTS idx_expenses_trip ON expenses(trip_id, date DESC);
     CREATE INDEX IF NOT EXISTS idx_expenses_payer ON expenses(paid_by_id);
@@ -98,4 +109,16 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_settlements_pair ON settlements(from_member_id, to_member_id);
     CREATE INDEX IF NOT EXISTS idx_logs_trip ON activity_logs(trip_id, created_at DESC);
   `);
+
+  try {
+    db.exec(`ALTER TABLE members ADD COLUMN user_id TEXT`);
+  } catch (e) {
+    // Column already exists
+  }
+
+  try {
+    db.exec(`ALTER TABLE trips ADD COLUMN creator_user_id TEXT`);
+  } catch (e) {
+    // Column already exists
+  }
 }

@@ -7,9 +7,60 @@ import {
   MemberBalance,
   ExpenseCategory,
   SplitType,
+  User,
 } from '../types';
 
 const BASE_URL = '/api';
+
+export async function loginWithGoogleCredential(credential: string): Promise<User> {
+  const res = await fetch(`${BASE_URL}/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to login with Google');
+  }
+  const data = await res.json();
+  return data.user;
+}
+
+export async function loginWithGoogleProfile(profile: {
+  email: string;
+  name?: string;
+  picture?: string;
+  googleId?: string;
+}): Promise<User> {
+  const res = await fetch(`${BASE_URL}/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ profile }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || 'Failed to login with Google');
+  }
+  const data = await res.json();
+  return data.user;
+}
+
+export async function fetchCurrentUser(userId: string): Promise<User | null> {
+  const res = await fetch(`${BASE_URL}/auth/me?userId=${userId}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.user;
+}
+
+export async function fetchAuthConfig(): Promise<{ googleClientId: string }> {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/config`);
+    if (!res.ok) return { googleClientId: '' };
+    return res.json();
+  } catch {
+    return { googleClientId: '' };
+  }
+}
 
 export async function fetchTrips(): Promise<Trip[]> {
   const res = await fetch(`${BASE_URL}/trips`);

@@ -14,6 +14,7 @@ import { expensesRouter } from './routes/expenses.js';
 import { settlementsRouter } from './routes/settlements.js';
 import { balancesRouter } from './routes/balances.js';
 import { logsRouter } from './routes/logs.js';
+import { authRouter } from './routes/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -75,6 +76,7 @@ app.use('/api/trips/:tripId/expenses', expensesRouter);
 app.use('/api/trips/:tripId/settlements', settlementsRouter);
 app.use('/api/trips/:tripId/balances', balancesRouter);
 app.use('/api/trips/:tripId/logs', logsRouter);
+app.use('/api/auth', authRouter);
 
 // Serve frontend static build if available (production mode)
 const CLIENT_DIST = path.resolve(__dirname, '../dist');
@@ -92,6 +94,6 @@ if (fs.existsSync(CLIENT_DIST)) {
 initDb();
 seedInitialData();
 
-app.listen(PORT, () => {
-  console.log(`🚀 Harbgun API Server running on http://localhost:${PORT}`);
+app.listen(Number(PORT), '0.0.0.0', () => {
+  console.log(`🚀 Harbgun API Server running on http://0.0.0.0:${PORT}`);
 });
