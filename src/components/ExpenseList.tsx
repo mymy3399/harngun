@@ -153,11 +153,14 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
               className="w-full bg-slate-950 border border-slate-800 text-slate-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-emerald-500"
             >
               <option value="all">คนจ่าย: ทุกคน</option>
-              {members.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.avatar} {m.name}
-                </option>
-              ))}
+              {members.map(m => {
+                const emoji = (!m.avatar || m.avatar.startsWith('http') || m.avatar.length > 8) ? '🧑‍💼' : m.avatar;
+                return (
+                  <option key={m.id} value={m.id}>
+                    {emoji} {m.name}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

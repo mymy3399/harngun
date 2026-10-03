@@ -279,11 +279,14 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               onChange={e => setPayerId(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
             >
-              {members.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.avatar} {m.name}
-                </option>
-              ))}
+              {members.map(m => {
+                const emoji = (!m.avatar || m.avatar.startsWith('http') || m.avatar.length > 8) ? '🧑‍💼' : m.avatar;
+                return (
+                  <option key={m.id} value={m.id}>
+                    {emoji} {m.name}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

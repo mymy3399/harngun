@@ -42,7 +42,8 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
 
   const payer = members.find(m => m.id === expense.paid_by_id);
   const payerName = expense.payer_name || payer?.name || 'สมาชิก';
-  const payerAvatar = expense.payer_avatar || payer?.avatar || '😎';
+  const rawPayerAvatar = expense.payer_avatar || payer?.avatar || '😎';
+  const payerAvatar = (!rawPayerAvatar || rawPayerAvatar.startsWith('http') || rawPayerAvatar.length > 8) ? '😎' : rawPayerAvatar;
 
   // Format currency
   const formatBaht = (amt: number) => {
@@ -171,10 +172,13 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                 const mem = members.find(m => m.id === memberId);
                 const isPayer = memberId === expense.paid_by_id;
 
+                const rawMemAvatar = mem?.avatar;
+                const cleanMemAvatar = (!rawMemAvatar || rawMemAvatar.startsWith('http') || rawMemAvatar.length > 8) ? '🧑‍💼' : rawMemAvatar;
+
                 return (
                   <div key={memberId} className="py-2 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="text-base">{mem?.avatar || '🧑‍💼'}</span>
+                      <span className="text-base">{cleanMemAvatar}</span>
                       <div>
                         <span className="font-medium text-white">{mem?.name || 'สมาชิก'}</span>
                         {isPayer && (

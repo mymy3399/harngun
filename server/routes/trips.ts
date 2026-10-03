@@ -62,6 +62,10 @@ tripsRouter.post('/join', (req: AuthenticatedRequest, res) => {
 
     // Add user as member
     const memberId = `m-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const EMOJI_LIST = ['😎', '🌸', '🏄‍♂️', '🎧', '🦊', '🐱', '🐼', '🦁', '🐨', '🐯', '🦄', '🐰', '🥑', '🚀', '🌟', '🎯'];
+    const memberAvatar = (user.picture && !user.picture.startsWith('http') && user.picture.length <= 8)
+      ? user.picture
+      : EMOJI_LIST[Math.abs((user.email || user.name || 'member').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0)) % EMOJI_LIST.length];
 
     db.transaction(() => {
       db.prepare(`
@@ -73,7 +77,7 @@ tripsRouter.post('/join', (req: AuthenticatedRequest, res) => {
         user.id,
         user.name,
         user.promptpay || '',
-        user.picture || '🧑‍🤝‍🧑'
+        memberAvatar
       );
 
       db.prepare(`
@@ -153,6 +157,11 @@ tripsRouter.post('/', (req: AuthenticatedRequest, res) => {
     const memberId = `m-${Date.now()}`;
     const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
+    const EMOJI_LIST = ['😎', '🌸', '🏄‍♂️', '🎧', '🦊', '🐱', '🐼', '🦁', '🐨', '🐯', '🦄', '🐰', '🥑', '🚀', '🌟', '🎯'];
+    const ownerAvatar = (user.picture && !user.picture.startsWith('http') && user.picture.length <= 8)
+      ? user.picture
+      : EMOJI_LIST[Math.abs((user.email || user.name || 'owner').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0)) % EMOJI_LIST.length];
+
     const createTx = db.transaction(() => {
       db.prepare(`
         INSERT INTO trips (id, name, creator_user_id, invite_code, created_at, updated_at)
@@ -168,7 +177,7 @@ tripsRouter.post('/', (req: AuthenticatedRequest, res) => {
         user.id,
         user.name,
         promptPay && promptPay.trim() ? promptPay.trim() : (user.promptpay || ''),
-        user.picture || '😎'
+        ownerAvatar
       );
 
       db.prepare(`
@@ -284,7 +293,7 @@ tripsRouter.post('/:id/test-telegram', async (req: AuthenticatedRequest, res) =>
       `✅ บอทส่งข้อความแจ้งเตือนเข้า Telegram สำเร็จเรียบร้อย`,
       `เมื่อสมาชิกเพิ่มบิล, เคลียร์ยอดเงิน หรือเข้าร่วมกลุ่ม ระบบจะส่งสรุปมาที่นี่อัตโนมัติ 🚀`,
       `━━━━━━━━━━━━━━━━━━`,
-      `⚡ <i>ระบบหารเงิน Harbgun</i>`,
+      `⚡ <i>ระบบหารเงิน Harngun</i>`,
     ].join('\n');
 
     const result = await sendTelegramMessage(activeToken, activeChatId, testMessage);

@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   KeyRound,
   CreditCard,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { User } from '../types';
 import {
@@ -37,13 +39,14 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
   const [authMode, setAuthMode] = useState<'google' | 'email_login' | 'email_register'>('google');
   
   // Google sign in state
-  const [googleEmail, setGoogleEmail] = useState('');
-  const [googleName, setGoogleName] = useState('');
-  const [googlePromptPay, setGooglePromptPay] = useState('');
+  const [googleEmail, setGoogleEmail] = useState(() => localStorage.getItem('hg_saved_gmail') || '');
+  const [googleName, setGoogleName] = useState(() => localStorage.getItem('hg_saved_name') || '');
+  const [googlePromptPay, setGooglePromptPay] = useState(() => localStorage.getItem('hg_saved_pp') || '');
 
   // Email / Password state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [promptPay, setPromptPay] = useState('');
 
@@ -117,6 +120,11 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
       const displayName = googleName.trim() || cleanEmail.split('@')[0];
       const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanEmail)}`;
 
+      // Save to localStorage for quick login next time
+      localStorage.setItem('hg_saved_gmail', cleanEmail);
+      localStorage.setItem('hg_saved_name', displayName);
+      if (googlePromptPay.trim()) localStorage.setItem('hg_saved_pp', googlePromptPay.trim());
+
       const { user } = await loginWithGoogleProfile({
         email: cleanEmail,
         name: displayName,
@@ -162,7 +170,7 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
             <Receipt className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">
-            หารกัน <span className="text-emerald-400 font-bold">(Harbgun)</span>
+            หารกัน <span className="text-emerald-400 font-bold">(Harngun)</span>
           </h1>
           <p className="text-xs text-slate-400">
             แอปบันทึกและหารค่าใช้จ่ายในชีวิตประจำวัน ตัดหนี้อัตโนมัติ สแกนจ่ายด้วย Thai PromptPay QR
@@ -270,7 +278,7 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
               <div className="text-center mb-2">
                 <h4 className="font-bold text-xs text-white">ลงชื่อเข้าใช้ด้วยบัญชี Google จริงของคุณ</h4>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  ระบบจะบันทึกข้อมูลผู้ใช้จริงลงฐานข้อมูล SQLite ในเครื่องทันที
+                  บันทึกข้อมูลจริงลงฐานข้อมูล SQLite ในระบบ
                 </p>
               </div>
 
@@ -281,7 +289,7 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
                   <input
                     type="email"
                     required
-                    placeholder="เช่น user@gmail.com"
+                    placeholder="เช่น yourname@gmail.com"
                     value={googleEmail}
                     onChange={e => setGoogleEmail(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
@@ -370,13 +378,20 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
               <div className="relative">
                 <Lock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   placeholder="รหัสผ่านอย่างน้อย 6 ตัวอักษร"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-10 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300"
+                >
+                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
               </div>
             </div>
 
@@ -412,13 +427,40 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
               </span>
               <ArrowRight className="w-4 h-4" />
             </button>
+
+            {/* Quick Switch Link between Login & Register */}
+            <div className="text-center pt-2">
+              {authMode === 'email_login' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('email_register');
+                    setErrorMsg('');
+                  }}
+                  className="text-xs text-slate-400 hover:text-emerald-400 transition"
+                >
+                  ยังไม่มีบัญชีใช่ไหม? <span className="text-emerald-400 font-semibold underline underline-offset-2">กดสมัครสมาชิกที่นี่</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('email_login');
+                    setErrorMsg('');
+                  }}
+                  className="text-xs text-slate-400 hover:text-emerald-400 transition"
+                >
+                  มีบัญชีอยู่แล้วใช่ไหม? <span className="text-emerald-400 font-semibold underline underline-offset-2">กดเข้าสู่ระบบที่นี่</span>
+                </button>
+              )}
+            </div>
           </form>
         )}
 
         {/* Security & Database Guarantee Footer */}
         <div className="pt-2 border-t border-slate-800/80 flex items-center justify-center gap-1.5 text-[11px] text-slate-500 text-center">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-          <span>ข้อมูลผู้ใช้จริงถูกจัดเก็บอย่างปลอดภัยในฐานข้อมูล SQLite ในระบบ</span>
+          <span>ข้อมูลผู้ใช้จริงถูกจัดเก็บอย่างปลอดภัยในฐานข้อมูลระบบ Harngun</span>
         </div>
       </div>
     </div>

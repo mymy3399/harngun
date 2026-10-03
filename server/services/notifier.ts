@@ -118,7 +118,7 @@ export async function notifyExpenseCreated(
     `💸 <b>เฉลี่ยคนละ:</b> ฿${Number(avg).toLocaleString('th-TH', { minimumFractionDigits: 2 })}`,
     `📅 <b>วันที่:</b> ${data.date || new Date().toISOString().split('T')[0]}`,
     `━━━━━━━━━━━━━━━━━━`,
-    `⚡ <i>บันทึกผ่านระบบ หารกัน (Harbgun)</i>`,
+    `⚡ <i>บันทึกผ่านระบบ หารกัน (Harngun)</i>`,
   ].join('\n');
 
   await sendTelegramMessage(config.botToken, config.chatId, message);
@@ -151,7 +151,7 @@ export async function notifySettlementRecorded(
     data.note ? `📝 <b>หมายเหตุ:</b> <i>${escapeHtml(data.note)}</i>\n` : '',
     `✅ <b>สถานะ:</b> เคลียร์ยอดสำเร็จเรียบร้อย`,
     `━━━━━━━━━━━━━━━━━━`,
-    `⚡ <i>ระบบหารเงิน Harbgun</i>`,
+    `⚡ <i>ระบบหารเงิน Harngun</i>`,
   ].filter(Boolean).join('\n');
 
   await sendTelegramMessage(config.botToken, config.chatId, message);
@@ -171,7 +171,7 @@ export async function notifyMemberJoined(tripId: string, memberName: string) {
     `👤 <b>${escapeHtml(memberName)}</b> ได้เข้าร่วมกลุ่มแชร์ค่าใช้จ่ายแล้ว`,
     `สามารถเริ่มเพิ่มบิลและหารค่าใช้จ่ายร่วมกันได้ทันที ✨`,
     `━━━━━━━━━━━━━━━━━━`,
-    `⚡ <i>ระบบหารเงิน Harbgun</i>`,
+    `⚡ <i>ระบบหารเงิน Harngun</i>`,
   ].join('\n');
 
   await sendTelegramMessage(config.botToken, config.chatId, message);

@@ -52,7 +52,7 @@ export function exportTripToCsv(
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `harbgun-${tripName.replace(/[^a-zA-Z0-9ก-๙]/g, '_')}-${new Date().toISOString().split('T')[0]}.csv`);
+  link.setAttribute('download', `harngun-${tripName.replace(/[^a-zA-Z0-9ก-๙]/g, '_')}-${new Date().toISOString().split('T')[0]}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

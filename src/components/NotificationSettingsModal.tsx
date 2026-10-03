@@ -138,7 +138,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
 
   const handleTestDeviceNotification = () => {
     showDeviceNotification(`🔔 ทดสอบแจ้งเตือนกลุ่ม: ${tripName}`, {
-      body: 'ระบบหารกัน (Harbgun) ส่งการแจ้งเตือนและสั่นเตือนบนอุปกรณ์ของคุณเรียบร้อยแล้ว!',
+      body: 'ระบบหารกัน (Harngun) ส่งการแจ้งเตือนและสั่นเตือนบนอุปกรณ์ของคุณเรียบร้อยแล้ว!',
     });
     setDeviceTestSuccess(true);
     setTimeout(() => setDeviceTestSuccess(false), 3000);

@@ -1,8 +1,8 @@
-# 💸 หารกัน (Harbgun) - Trip Bill Splitter & Debt Settlement App
+# 💸 หารกัน (Harngun) - Trip Bill Splitter & Debt Settlement App
 
 แอปจัดการค่าใช้จ่ายทริป หารบิลอัตโนมัติ ตัดหนี้อัจฉริยะด้วยอัลกอริทึมจับคู่หนี้ขั้นต่ำ รองรับบิลจำนวนมากด้วย SQLite และสร้าง QR Code พร้อมเพย์มาตรฐาน EMVCo สแกนจ่ายได้จริง
 
-![Harbgun Banner](https://img.shields.io/badge/Status-Production%20Ready-emerald)
+![Harngun Banner](https://img.shields.io/badge/Status-Production%20Ready-emerald)
 ![Stack](https://img.shields.io/badge/Stack-React%20%7C%20Vite%20%7C%20Tailwind%20%7C%20Express%20%7C%20SQLite-blue)
 
 ---
@@ -67,8 +67,8 @@ npm start
 ## 📁 โครงสร้างโปรเจกต์ (Project Structure)
 
 ```
-harbgun/
-├── data/                      # ฐานข้อมูล SQLite (harbgun.db)
+harngun/
+├── data/                      # ฐานข้อมูล SQLite (harngun.db / harbgun.db)
 ├── uploads/                   # โฟลเดอร์เก็บรูปสลิป/ใบเสร็จ
 ├── server/                    # Express.js + SQLite Backend
 │   ├── db.ts                  # การเชื่อมต่อ SQLite, Schema และ Indexes

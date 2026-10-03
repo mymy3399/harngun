@@ -97,5 +97,5 @@ initDb();
 seedInitialData();
 
 app.listen(Number(PORT), '0.0.0.0', () => {
-  console.log(`🚀 Harbgun API Server running on http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Harngun API Server running on http://0.0.0.0:${PORT}`);
 });
