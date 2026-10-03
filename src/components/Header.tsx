@@ -112,36 +112,38 @@ export const Header: React.FC<HeaderProps> = ({
             )}
 
             {/* Current user switch dropdown */}
-            <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>คุณคือ:</span>
-              <div className="relative inline-block">
-                <select
-                  value={currentUserId}
-                  onChange={e => onUserChange(e.target.value)}
-                  className="bg-slate-800/90 text-emerald-300 font-semibold px-2 py-0.5 rounded border border-slate-700 focus:border-emerald-500 text-xs outline-none cursor-pointer"
-                >
-                  {members.map(m => (
+            <div className="flex items-center gap-1 mt-0.5 text-[11px] text-slate-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0"></span>
+              <span className="flex-shrink-0 text-[11px] text-slate-400">คุณคือ:</span>
+              <select
+                value={currentUserId}
+                onChange={e => onUserChange(e.target.value)}
+                className="bg-slate-800/95 text-emerald-300 font-semibold px-1.5 py-0.5 rounded-lg border border-slate-700/80 focus:border-emerald-500 text-[11px] outline-none cursor-pointer max-w-[90px] xs:max-w-[120px] sm:max-w-[160px] truncate"
+                title="เปลี่ยนมุมมองสมาชิกที่ใช้งาน"
+              >
+                {members.map(m => {
+                  const emoji = !m.avatar || m.avatar.startsWith('http') || m.avatar.length > 8 ? '🧑‍💼' : m.avatar;
+                  return (
                     <option key={m.id} value={m.id}>
-                      {m.avatar} {m.name}
+                      {emoji} {m.name}
                     </option>
-                  ))}
-                </select>
-              </div>
+                  );
+                })}
+              </select>
             </div>
           </div>
 
-          {/* Action buttons: Google Login, Add Expense, Trip Switcher, Share */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Action buttons: Google Login, Add Expense, Switcher, Bell, Share */}
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
             {/* Google Login Profile Button */}
             <button
               onClick={onOpenLogin}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition active:scale-95 border ${
+              className={`flex items-center gap-1 px-2 py-1.5 sm:px-2.5 rounded-xl text-xs font-medium transition active:scale-95 border ${
                 authUser
                   ? 'bg-slate-800/90 border-emerald-500/50 text-white'
                   : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200 shadow-sm'
               }`}
-              title={authUser ? `เข้าสู่ระบบโดย: ${authUser.name}` : 'เข้าสู่ระบบด้วย Google'}
+              title={authUser ? `บัญชี: ${authUser.name} (${authUser.email})` : 'เข้าสู่ระบบบัญชี Google'}
             >
               {authUser ? (
                 <>
@@ -154,7 +156,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ) : (
                     <UserIcon className="w-3.5 h-3.5 text-emerald-400" />
                   )}
-                  <span className="hidden sm:inline font-semibold truncate max-w-[80px]">
+                  <span className="hidden md:inline font-semibold truncate max-w-[70px]">
                     {authUser.name.split(' ')[0]}
                   </span>
                 </>
@@ -186,17 +188,17 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Prominent Add Expense Button in Header */}
             <button
               onClick={onOpenAddExpense}
-              className="flex items-center gap-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 shadow-md shadow-emerald-950/40"
+              className="flex items-center gap-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 shadow-md shadow-emerald-950/40"
               title="เพิ่มบิลค่าใช้จ่ายใหม่"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span className="whitespace-nowrap">เพิ่มบิล</span>
+              <span className="hidden sm:inline whitespace-nowrap">เพิ่มบิล</span>
             </button>
 
-            {/* Trip switcher */}
+            {/* Switch Group */}
             <button
               onClick={onOpenTripSwitcher}
-              className="flex items-center gap-1 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/80 px-2 py-1.5 rounded-xl text-xs font-medium transition active:scale-95 shadow-sm"
+              className="flex items-center gap-1 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/80 p-1.5 sm:px-2 rounded-xl text-xs font-medium transition active:scale-95 shadow-sm"
               title="สลับกลุ่มหรือสร้างกลุ่มใหม่"
             >
               <Layers className="w-3.5 h-3.5 text-indigo-400" />
@@ -205,7 +207,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Notification settings button */}
             <button
               onClick={onOpenNotificationSettings}
-              className="relative flex items-center gap-1 bg-slate-800/80 hover:bg-slate-700 text-sky-400 border border-slate-700/80 px-2 py-1.5 rounded-xl text-xs font-medium transition active:scale-95 shadow-sm"
+              className="relative flex items-center gap-1 bg-slate-800/80 hover:bg-slate-700 text-sky-400 border border-slate-700/80 p-1.5 sm:px-2 rounded-xl text-xs font-medium transition active:scale-95 shadow-sm"
               title="ตั้งค่าแจ้งเตือน Telegram & มือถือ"
             >
               <Bell className="w-3.5 h-3.5" />
@@ -217,7 +219,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Share button */}
             <button
               onClick={onOpenShareModal}
-              className="flex items-center gap-1 bg-slate-800/80 hover:bg-slate-700 text-emerald-400 border border-slate-700/80 px-2 py-1.5 rounded-xl text-xs font-medium transition active:scale-95 shadow-sm"
+              className="flex items-center gap-1 bg-slate-800/80 hover:bg-slate-700 text-emerald-400 border border-slate-700/80 p-1.5 sm:px-2 rounded-xl text-xs font-medium transition active:scale-95 shadow-sm"
               title="แชร์ลิงก์กลุ่ม"
             >
               <Share2 className="w-3.5 h-3.5" />

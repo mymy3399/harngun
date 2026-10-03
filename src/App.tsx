@@ -87,7 +87,7 @@ export default function App() {
   const [showReceiptViewer, setShowReceiptViewer] = useState<{ url: string; title: string } | null>(null);
   const [showTripSwitcher, setShowTripSwitcher] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [notificationTarget, setNotificationTarget] = useState<{ id: string; name: string } | null>(null);
   const [isSeedingBulk, setIsSeedingBulk] = useState(false);
 
   // Active Trip object
@@ -387,7 +387,9 @@ export default function App() {
           onOpenTripSwitcher={() => setShowTripSwitcher(true)}
           onOpenShareModal={() => setShowShareModal(true)}
           onOpenAddExpense={() => setShowAddModal(true)}
-          onOpenNotificationSettings={() => setShowNotificationModal(true)}
+          onOpenNotificationSettings={() =>
+            currentTrip && setNotificationTarget({ id: currentTrip.id, name: currentTrip.name })
+          }
           onOpenLogin={() => setShowLoginModal(true)}
         />
 
@@ -514,6 +516,9 @@ export default function App() {
             onSelectTrip={id => setActiveTripId(id)}
             onCreateTrip={handleCreateTrip}
             onJoinTrip={handleJoinTrip}
+            onOpenNotificationSettings={(tripId, tripName) =>
+              setNotificationTarget({ id: tripId, name: tripName })
+            }
             onClose={() => setShowTripSwitcher(false)}
           />
         )}
@@ -525,11 +530,11 @@ export default function App() {
           />
         )}
 
-        {showNotificationModal && currentTrip && (
+        {notificationTarget && (
           <NotificationSettingsModal
-            tripId={currentTrip.id}
-            tripName={currentTrip.name}
-            onClose={() => setShowNotificationModal(false)}
+            tripId={notificationTarget.id}
+            tripName={notificationTarget.name}
+            onClose={() => setNotificationTarget(null)}
             onUpdated={() => {
               loadTrips();
               refreshTripData();

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Layers, Check, ArrowRight, UserPlus, Sparkles } from 'lucide-react';
+import { X, Plus, Layers, Check, ArrowRight, UserPlus, Sparkles, Bell } from 'lucide-react';
 import { Trip } from '../types';
 import { formatBaht } from '../utils/currency';
 
@@ -9,6 +9,7 @@ interface TripSwitcherModalProps {
   onSelectTrip: (tripId: string) => void;
   onCreateTrip: (name: string, promptPay?: string) => Promise<void>;
   onJoinTrip: (inviteCode: string) => Promise<void>;
+  onOpenNotificationSettings?: (tripId: string, tripName: string) => void;
   onClose: () => void;
 }
 
@@ -18,6 +19,7 @@ export const TripSwitcherModal: React.FC<TripSwitcherModalProps> = ({
   onSelectTrip,
   onCreateTrip,
   onJoinTrip,
+  onOpenNotificationSettings,
   onClose,
 }) => {
   const [mode, setMode] = useState<'list' | 'create' | 'join'>('list');
@@ -237,7 +239,29 @@ export const TripSwitcherModal: React.FC<TripSwitcherModalProps> = ({
                       </div>
                     </div>
 
-                    <ArrowRight className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {onOpenNotificationSettings && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenNotificationSettings(trip.id, trip.name);
+                          }}
+                          className={`p-2 rounded-xl border text-xs flex items-center gap-1 transition ${
+                            Boolean(trip.telegram_enabled)
+                              ? 'bg-sky-950/70 border-sky-500/50 text-sky-300 hover:bg-sky-900/60'
+                              : 'bg-slate-900 hover:bg-slate-800 border-slate-700/60 text-slate-400 hover:text-sky-300'
+                          }`}
+                          title={`ตั้งค่าแจ้งเตือน Telegram สำหรับกลุ่ม "${trip.name}"`}
+                        >
+                          <Bell className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline text-[10px] font-medium">
+                            {Boolean(trip.telegram_enabled) ? 'Tele เปิดอยู่' : 'ตั้งค่า Tele'}
+                          </span>
+                        </button>
+                      )}
+                      <ArrowRight className="w-4 h-4 text-slate-500" />
+                    </div>
                   </div>
                 );
               })

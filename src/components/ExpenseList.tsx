@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Search,
   Filter,
@@ -10,10 +10,12 @@ import {
   ChevronLeft,
   ChevronRight,
   PlusCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { Expense, Member, MemberBalance, CATEGORIES, ExpenseCategory } from '../types';
 import { formatBaht, formatDateThai } from '../utils/currency';
 import { exportTripToCsv } from '../utils/exportCsv';
+import { ExpenseDetailModal } from './ExpenseDetailModal';
 
 interface ExpenseListProps {
   tripName: string;
@@ -60,6 +62,8 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
   onSeedBulk,
   isSeedingBulk,
 }) => {
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+
   const getCategoryInfo = (catId: ExpenseCategory) => {
     return CATEGORIES.find(c => c.id === catId) || CATEGORIES[5];
   };
@@ -208,19 +212,24 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
             return (
               <div
                 key={exp.id}
-                className="bg-slate-900/90 hover:bg-slate-900 border border-slate-800 rounded-2xl p-3.5 transition group shadow-sm flex flex-col gap-2"
+                onClick={() => setSelectedExpense(exp)}
+                className="bg-slate-900/90 hover:bg-slate-850 hover:border-slate-700/80 border border-slate-800 rounded-2xl p-3.5 transition group shadow-sm flex flex-col gap-2 cursor-pointer active:scale-[0.99]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-2.5 min-w-0">
-                    <span className="text-2xl p-1 bg-slate-950 rounded-xl border border-slate-800/80">
+                    <span className="text-2xl p-1 bg-slate-950 rounded-xl border border-slate-800/80 flex-shrink-0">
                       {cat.icon}
                     </span>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <h4 className="font-bold text-sm text-white truncate">{exp.title}</h4>
+                        <h4 className="font-bold text-sm text-white truncate group-hover:text-emerald-400 transition">{exp.title}</h4>
                         {exp.receipt_image && (
                           <button
-                            onClick={() => onOpenReceiptViewer(exp.receipt_image!, exp.title)}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenReceiptViewer(exp.receipt_image!, exp.title);
+                            }}
                             title="ดูรูปสลิป"
                             className="bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 p-0.5 rounded hover:bg-emerald-900 transition flex-shrink-0"
                           >
@@ -232,16 +241,16 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                         <span>จ่ายโดย {exp.payer_avatar} {exp.payer_name}</span>
                         <span>•</span>
                         <span>{formatDateThai(exp.date)}</span>
-                        {exp.has_sc ? (
+                        {Boolean(exp.has_sc) && (
                           <span className="bg-amber-950/60 text-amber-300 border border-amber-500/40 text-[9px] px-1 rounded">
                             SC 10%
                           </span>
-                        ) : null}
-                        {exp.has_vat ? (
+                        )}
+                        {Boolean(exp.has_vat) && (
                           <span className="bg-blue-950/60 text-blue-300 border border-blue-500/40 text-[9px] px-1 rounded">
                             VAT 7%
                           </span>
-                        ) : null}
+                        )}
                       </div>
                     </div>
                   </div>
@@ -267,10 +276,15 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                         ? 'ระบุยอดตรงตัว'
                         : 'ตามส่วน'}
                     </span>
+                    <span className="text-[10px] text-emerald-400/80 ml-1.5 opacity-0 group-hover:opacity-100 transition hidden xs:inline">
+                      • แตะดูรายละเอียด ➔
+                    </span>
                   </div>
 
                   <button
-                    onClick={() => {
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (confirm(`คุณแน่ใจว่าต้องการลบบิล "${exp.title}" ใช่หรือไม่?`)) {
                         onDeleteExpense(exp.id);
                       }
@@ -285,6 +299,20 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
             );
           })}
         </div>
+      )}
+
+      {/* Selected Expense Detail Modal */}
+      {selectedExpense && (
+        <ExpenseDetailModal
+          expense={selectedExpense}
+          members={members}
+          onClose={() => setSelectedExpense(null)}
+          onDeleteExpense={async (id) => {
+            onDeleteExpense(id);
+            setSelectedExpense(null);
+          }}
+          onOpenReceiptViewer={onOpenReceiptViewer}
+        />
       )}
 
       {/* Pagination Controls */}
