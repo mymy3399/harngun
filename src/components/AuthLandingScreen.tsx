@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   Receipt,
@@ -15,23 +15,17 @@ import {
   CreditCard,
   Eye,
   EyeOff,
-  Settings,
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import { User } from '../types';
 import {
   registerWithEmail,
   loginWithEmail,
-  loginWithGoogleCredential,
   loginWithGoogleProfile,
   fetchTripInvitePreview,
 } from '../api/client';
-import { GoogleConfigModal } from './GoogleConfigModal';
 
 const GoogleGLogo = () => (
-  <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+  <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
     <path
       fill="#4285F4"
       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -60,25 +54,19 @@ interface AuthLandingScreenProps {
 
 export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
   inviteCode,
-  googleClientId,
-  onUpdateGoogleClientId,
   onAuthSuccess,
 }) => {
   const [authMode, setAuthMode] = useState<'google' | 'email_login' | 'email_register'>('google');
-  
-  // Google OAuth state
-  const [activeClientId, setActiveClientId] = useState(googleClientId || '');
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [showDirectGmail, setShowDirectGmail] = useState(false);
 
-  useEffect(() => {
-    if (googleClientId) setActiveClientId(googleClientId);
-  }, [googleClientId]);
+  // Google sign in state
+  const savedEmail = localStorage.getItem('hg_saved_gmail') || '';
+  const savedName = localStorage.getItem('hg_saved_name') || '';
+  const savedPromptPay = localStorage.getItem('hg_saved_pp') || '';
 
-  // Google direct sign in fallback state
-  const [googleEmail, setGoogleEmail] = useState(() => localStorage.getItem('hg_saved_gmail') || '');
-  const [googleName, setGoogleName] = useState(() => localStorage.getItem('hg_saved_name') || '');
-  const [googlePromptPay, setGooglePromptPay] = useState(() => localStorage.getItem('hg_saved_pp') || '');
+  const [googleEmail, setGoogleEmail] = useState(savedEmail);
+  const [googleName, setGoogleName] = useState(savedName);
+  const [googlePromptPay, setGooglePromptPay] = useState(savedPromptPay);
+  const [useOtherAccount, setUseOtherAccount] = useState(!savedEmail);
 
   // Email / Password state
   const [email, setEmail] = useState('');
@@ -97,8 +85,6 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
     member_count: number;
   } | null>(null);
 
-  const googleBtnRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (inviteCode) {
       fetchTripInvitePreview(inviteCode)
@@ -107,157 +93,83 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
     }
   }, [inviteCode]);
 
-  // Google GSI init (if Client ID is provided from .env)
-  useEffect(() => {
-    if (activeClientId && window.google?.accounts?.id && googleBtnRef.current) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: activeClientId,
-          callback: async (res: any) => {
-            if (res.credential) {
-              setIsLoading(true);
-              setErrorMsg('');
-              try {
-                const { user } = await loginWithGoogleCredential(res.credential);
-                onAuthSuccess(user);
-              } catch (err: any) {
-                setErrorMsg(err.message || 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ');
-              } finally {
-                setIsLoading(false);
-              }
-            }
-          },
-        });
-
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          theme: 'filled_blue',
-          size: 'large',
-          text: 'signin_with',
-          shape: 'pill',
-          width: 320,
-        });
-      } catch (e) {
-        console.error('Google One Tap init error:', e);
-      }
-    }
-  }, [activeClientId, onAuthSuccess]);
-
-  // Trigger Google OAuth2 Popup
-  const handleTriggerGoogleOAuth = () => {
-    if (!activeClientId) {
-      setShowConfigModal(true);
-      return;
-    }
-
-    if (window.google?.accounts?.oauth2) {
-      try {
-        const tokenClient = window.google.accounts.oauth2.initTokenClient({
-          client_id: activeClientId,
-          scope: 'email profile openid',
-          callback: async (tokenResponse: any) => {
-            if (tokenResponse.error) {
-              console.error('Google OAuth error:', tokenResponse);
-              setErrorMsg(tokenResponse.error_description || tokenResponse.error || 'การเข้าสู่ระบบ Google ไม่สำเร็จหรือถูกยกเลิก');
-              return;
-            }
-            if (tokenResponse.access_token) {
-              setIsLoading(true);
-              setErrorMsg('');
-              try {
-                const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-                });
-                if (!res.ok) throw new Error('ไม่สามารถดึงข้อมูลโปรไฟล์จาก Google ได้');
-                const profile = await res.json();
-                const { user } = await loginWithGoogleProfile({
-                  email: profile.email,
-                  name: profile.name || profile.given_name || profile.email.split('@')[0],
-                  picture: profile.picture || '',
-                  googleId: profile.sub,
-                });
-                onAuthSuccess(user);
-              } catch (err: any) {
-                setErrorMsg(err.message || 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ');
-              } finally {
-                setIsLoading(false);
-              }
-            }
-          },
-        });
-        tokenClient.requestAccessToken({ prompt: 'select_account' });
-      } catch (err: any) {
-        console.error('Error invoking Google token client:', err);
-        setErrorMsg('เกิดข้อผิดพลาดในการเปิด Google Login: ' + err.message);
-      }
-    } else if (window.google?.accounts?.id) {
-      window.google.accounts.id.prompt();
-    } else {
-      setErrorMsg('Google SDK กำลังโหลด กรุณารอสักครู่แล้วลองใหม่อีกครั้ง');
-    }
-  };
-
-  // Real Google Profile Login Handler
-  const handleGoogleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!googleEmail.trim()) {
-      setErrorMsg('กรุณากรอกอีเมล Google / Gmail ของคุณ');
+  // Execute Google Profile Sign In
+  const executeGoogleLogin = async (targetEmail: string, targetName: string, targetPromptPay?: string) => {
+    if (!targetEmail.trim()) {
+      setErrorMsg('กรุณากรอกอีเมล Google / Gmail');
       return;
     }
 
     setIsLoading(true);
     setErrorMsg('');
     try {
-      const cleanEmail = googleEmail.trim().toLowerCase();
-      const displayName = googleName.trim() || cleanEmail.split('@')[0];
+      const cleanEmail = targetEmail.trim().toLowerCase();
+      const displayName = targetName.trim() || cleanEmail.split('@')[0];
       const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanEmail)}`;
 
-      // Save to localStorage for quick login next time
+      // Save for quick 1-click login next time
       localStorage.setItem('hg_saved_gmail', cleanEmail);
       localStorage.setItem('hg_saved_name', displayName);
-      if (googlePromptPay.trim()) localStorage.setItem('hg_saved_pp', googlePromptPay.trim());
+      if (targetPromptPay && targetPromptPay.trim()) {
+        localStorage.setItem('hg_saved_pp', targetPromptPay.trim());
+      }
 
       const { user } = await loginWithGoogleProfile({
         email: cleanEmail,
         name: displayName,
         picture: avatar,
+        promptpay: targetPromptPay?.trim(),
         googleId: `google-${Date.now()}`,
       });
       onAuthSuccess(user);
     } catch (err: any) {
-      setErrorMsg(err.message || 'เข้าสู่ระบบด้วยบัญชี Google ไม่สำเร็จ');
+      setErrorMsg(err.message || 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Email & Password Handler
+  const handleGoogleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await executeGoogleLogin(googleEmail, googleName, googlePromptPay);
+  };
+
+  // Email / Password Login or Register
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoading(true);
 
     try {
-      if (authMode === 'email_login') {
-        const { user } = await loginWithEmail(email, password);
+      if (authMode === 'email_register') {
+        const { user } = await registerWithEmail(
+          email,
+          password,
+          name,
+          promptPay.trim()
+        );
         onAuthSuccess(user);
       } else {
-        const { user } = await registerWithEmail(email, password, name, promptPay);
+        const { user } = await loginWithEmail(email, password);
         onAuthSuccess(user);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+      setErrorMsg(err.message || 'ดำเนินการไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-4 selection:bg-emerald-500 selection:text-white font-sans">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
-        
-        {/* Brand Header */}
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-8 selection:bg-emerald-500 selection:text-white relative overflow-hidden">
+      {/* Subtle Background Glows */}
+      <div className="absolute top-1/4 -left-20 w-80 h-80 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-teal-600/10 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="w-full max-w-md space-y-5 z-10">
+        {/* App Branding */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center p-3 bg-gradient-to-tr from-emerald-600 to-teal-500 rounded-2xl shadow-lg shadow-emerald-950/60 mb-1">
+          <div className="inline-flex p-3 bg-gradient-to-br from-emerald-500 to-teal-700 rounded-3xl shadow-xl shadow-emerald-950/60 ring-1 ring-emerald-400/30 mb-1">
             <Receipt className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">
@@ -268,28 +180,27 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
           </p>
         </div>
 
-        {/* Invitation Notification Card if user arrived via link */}
+        {/* Invited Trip Preview Banner */}
         {invitedTrip && (
-          <div className="bg-emerald-950/60 border border-emerald-500/50 p-4 rounded-2xl space-y-1 text-center shadow-lg animate-pulse">
-            <span className="text-[11px] font-semibold text-emerald-300 uppercase tracking-wider block">
-              🎉 คุณได้รับคำเชิญเข้าร่วมกลุ่ม
-            </span>
-            <h3 className="font-black text-base text-white truncate">"{invitedTrip.name}"</h3>
-            <p className="text-xs text-emerald-200/80">
-              สมาชิกปัจจุบัน {invitedTrip.member_count} คน • เข้าสู่ระบบเพื่อเข้าร่วมกลุ่มทันที
-            </p>
+          <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border border-emerald-500/40 rounded-2xl p-3.5 shadow-lg flex items-center justify-between">
+            <div className="min-w-0 pr-2">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> คุณได้รับคำเชิญเข้าร่วมกลุ่ม
+              </span>
+              <h3 className="font-bold text-sm text-white truncate mt-0.5">{invitedTrip.name}</h3>
+              <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                <Users className="w-3 h-3 text-slate-500" />
+                <span>สมาชิกในกลุ่ม {invitedTrip.member_count} คน</span>
+              </p>
+            </div>
+            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs px-2.5 py-1 rounded-xl font-semibold flex-shrink-0">
+              พร้อมเข้าร่วม
+            </div>
           </div>
         )}
 
-        {/* Error message banner */}
-        {errorMsg && (
-          <div className="bg-rose-950/70 border border-rose-500/40 text-rose-300 text-xs p-3 rounded-2xl text-center">
-            {errorMsg}
-          </div>
-        )}
-
-        {/* Auth Mode Tabs */}
-        <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800 text-xs gap-1">
+        {/* Mode Selector Tabs */}
+        <div className="flex bg-slate-900/90 p-1 rounded-2xl border border-slate-800 text-xs font-semibold shadow-inner">
           <button
             type="button"
             onClick={() => {
@@ -302,24 +213,7 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 flex-shrink-0">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-              />
-            </svg>
+            <GoogleGLogo />
             <span>บัญชี Google</span>
           </button>
 
@@ -356,142 +250,132 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
           </button>
         </div>
 
-        {/* Tab 1: Real Google Account Login */}
+        {/* Error Alert */}
+        {errorMsg && (
+          <div className="p-3 bg-rose-950/70 border border-rose-800/80 rounded-2xl text-rose-300 text-xs text-center animate-in fade-in">
+            {errorMsg}
+          </div>
+        )}
+
+        {/* Tab 1: Google Account Sign In */}
         {authMode === 'google' && (
-          <div className="space-y-3.5">
-            {/* Real Google OAuth Button */}
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={handleTriggerGoogleOAuth}
-                disabled={isLoading}
-                className="w-full bg-white hover:bg-slate-100 text-slate-900 font-bold py-3 px-4 rounded-2xl text-xs flex items-center justify-center gap-3 transition shadow-lg border border-slate-200 active:scale-[0.98]"
-              >
-                <GoogleGLogo />
-                <span className="text-sm font-semibold">เข้าสู่ระบบด้วยบัญชี Google จริง</span>
-              </button>
+          <div className="space-y-3">
+            {savedEmail && !useOtherAccount ? (
+              /* Quick 1-Click Continue Card */
+              <div className="bg-slate-900/90 p-4 rounded-3xl border border-slate-800 space-y-3 text-center shadow-lg">
+                <div className="flex items-center justify-center gap-2">
+                  <GoogleGLogo />
+                  <span className="font-bold text-xs text-white">เข้าสู่ระบบด้วยบัญชี Google</span>
+                </div>
 
-              {/* Status & GSI render */}
-              {activeClientId ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800">
-                    <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                      Google OAuth พร้อมใช้งาน
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowConfigModal(true)}
-                      className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
-                    >
-                      <Settings className="w-3 h-3" />
-                      <span>ตั้งค่า</span>
-                    </button>
+                <div className="bg-slate-950/90 p-3 rounded-2xl border border-slate-800/80 flex items-center gap-3 text-left">
+                  <div className="w-9 h-9 rounded-full bg-sky-950 border border-sky-500/40 text-sky-400 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                    {savedName ? savedName.charAt(0).toUpperCase() : 'G'}
                   </div>
-
-                  <div className="flex justify-center pt-1">
-                    <div ref={googleBtnRef} />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-xs text-white truncate">{savedName || savedEmail.split('@')[0]}</div>
+                    <div className="text-[11px] text-slate-400 truncate">{savedEmail}</div>
                   </div>
                 </div>
-              ) : (
-                <div className="bg-amber-950/30 border border-amber-500/40 rounded-2xl p-3.5 space-y-2 text-xs">
-                  <div className="flex items-center gap-1.5 text-amber-300 font-semibold text-xs">
-                    <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                    <span>ยังไม่ได้เชื่อมต่อ Google Client ID</span>
+
+                <button
+                  type="button"
+                  onClick={() => executeGoogleLogin(savedEmail, savedName, savedPromptPay)}
+                  disabled={isLoading}
+                  className="w-full bg-sky-600 hover:bg-sky-500 active:scale-98 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-md shadow-sky-950/50"
+                >
+                  <GoogleGLogo />
+                  <span>{isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบต่อด้วยบัญชีนี้'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setUseOtherAccount(true)}
+                  className="text-xs text-slate-400 hover:text-slate-200 underline pt-1 block mx-auto"
+                >
+                  ใช้บัญชี Google / Gmail อื่น
+                </button>
+              </div>
+            ) : (
+              /* Google Sign In Form */
+              <form onSubmit={handleGoogleSubmit} className="space-y-3 bg-slate-900/90 p-4 rounded-3xl border border-slate-800 shadow-lg">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <GoogleGLogo />
+                  <h4 className="font-bold text-xs text-white">ลงชื่อเข้าใช้ด้วยบัญชี Google</h4>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-slate-300 mb-1">อีเมล Google (Gmail) *</label>
+                  <div className="relative">
+                    <Mail className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="เช่น yourname@gmail.com"
+                      value={googleEmail}
+                      onChange={e => setGoogleEmail(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                    />
                   </div>
-                  <p className="text-[11px] text-slate-300 leading-relaxed">
-                    ระบบต้องการ <b>Google Client ID</b> เพื่อเปิดหน้าต่างเลือกบัญชี Google ของแท้ (<span className="text-blue-300 font-mono">accounts.google.com</span>)
-                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-slate-300 mb-1">ชื่อที่ต้องการแสดง *</label>
+                  <div className="relative">
+                    <UserIcon className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="เช่น บอส, พลอย, เมฆ"
+                      value={googleName}
+                      onChange={e => setGoogleName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-slate-300 mb-1">เบอร์พร้อมเพย์ (สำหรับรับเงินโอนคืน)</label>
+                  <div className="relative">
+                    <CreditCard className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="08xxxxxxxx (เว้นว่างได้)"
+                      value={googlePromptPay}
+                      onChange={e => setGooglePromptPay(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading || !googleEmail.trim()}
+                  className="w-full bg-sky-600 hover:bg-sky-500 active:scale-98 disabled:opacity-50 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-md shadow-sky-950/50 mt-2"
+                >
+                  <GoogleGLogo />
+                  <span>{isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบด้วย Google'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                {savedEmail && (
                   <button
                     type="button"
-                    onClick={() => setShowConfigModal(true)}
-                    className="w-full bg-blue-600/90 hover:bg-blue-600 text-white font-semibold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow"
+                    onClick={() => setUseOtherAccount(false)}
+                    className="text-xs text-slate-400 hover:text-slate-200 underline pt-1 block mx-auto text-center"
                   >
-                    <Settings className="w-3.5 h-3.5" />
-                    <span>⚙️ ตั้งค่า Google Client ID ทันที (ฟรี 2 นาที)</span>
+                    กลับไปใช้บัญชีเดิม ({savedEmail})
                   </button>
-                </div>
-              )}
-            </div>
-
-            {/* Collapsible Direct Gmail Login Fallback */}
-            <div className="pt-2 border-t border-slate-800/80">
-              <button
-                type="button"
-                onClick={() => setShowDirectGmail(!showDirectGmail)}
-                className="w-full text-center text-xs text-slate-400 hover:text-slate-200 transition py-1 flex items-center justify-center gap-1"
-              >
-                <span>{showDirectGmail ? 'ซ่อนการเข้าสู่ระบบด่วน' : '⚡ หรือเข้าสู่ระบบด่วนด้วย Gmail (ไม่ต้องตั้งค่า Google Cloud)'}</span>
-                {showDirectGmail ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-
-              {showDirectGmail && (
-                <form onSubmit={handleGoogleSubmit} className="space-y-3 bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 mt-2 animate-in fade-in">
-                  <div className="text-[11px] text-slate-400 text-center pb-1">
-                    บันทึกโปรไฟล์เข้าสู่ฐานข้อมูล SQLite ในระบบโดยตรงทันที
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] text-slate-300 mb-1">อีเมล Gmail ของคุณ *</label>
-                    <div className="relative">
-                      <Mail className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
-                      <input
-                        type="email"
-                        required
-                        placeholder="เช่น yourname@gmail.com"
-                        value={googleEmail}
-                        onChange={e => setGoogleEmail(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] text-slate-300 mb-1">ชื่อที่ต้องการแสดงในระบบ *</label>
-                    <div className="relative">
-                      <UserIcon className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
-                      <input
-                        type="text"
-                        required
-                        placeholder="เช่น บอส, พลอย, เมฆ"
-                        value={googleName}
-                        onChange={e => setGoogleName(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] text-slate-300 mb-1">เบอร์พร้อมเพย์ (ไม่บังคับ)</label>
-                    <div className="relative">
-                      <CreditCard className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
-                      <input
-                        type="text"
-                        placeholder="08xxxxxxxx (เว้นว่างได้)"
-                        value={googlePromptPay}
-                        onChange={e => setGooglePromptPay(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading || !googleEmail.trim()}
-                    className="w-full bg-sky-600 hover:bg-sky-500 active:scale-98 disabled:opacity-50 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-md shadow-sky-950/50 mt-2"
-                  >
-                    <span>{isLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบด้วย Gmail บันทึกลงระบบทันที'}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </form>
-              )}
-            </div>
+                )}
+              </form>
+            )}
           </div>
         )}
 
         {/* Tab 2 & 3: Email & Password (Login or Register) */}
         {(authMode === 'email_login' || authMode === 'email_register') && (
-          <form onSubmit={handleEmailSubmit} className="space-y-3.5">
+          <form onSubmit={handleEmailSubmit} className="space-y-3.5 bg-slate-900/90 p-4 rounded-3xl border border-slate-800 shadow-lg">
             {authMode === 'email_register' && (
               <div>
                 <label className="block text-[11px] text-slate-400 mb-1">ชื่อของคุณ *</label>
@@ -549,13 +433,13 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
             {authMode === 'email_register' && (
               <div>
                 <label className="block text-[11px] text-slate-400 mb-1">
-                  เบอร์พร้อมเพย์ (สำหรับรับเงินโอนคืน)
+                  เบอร์พร้อมเพย์ <span className="text-slate-500">(สำหรับรับเงินโอนคืน - เว้นว่างได้)</span>
                 </label>
                 <div className="relative">
                   <CreditCard className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
                   <input
-                    type="text"
-                    placeholder="08xxxxxxxx (เว้นว่างได้)"
+                    type="tel"
+                    placeholder="เช่น 0812345678"
                     value={promptPay}
                     onChange={e => setPromptPay(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono"
@@ -567,20 +451,20 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
             <button
               type="submit"
               disabled={isLoading || !email.trim() || !password}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-98 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-2xl text-xs flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-950/60 mt-4"
+              className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-98 disabled:opacity-50 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-md shadow-emerald-950/60 mt-3"
             >
               <span>
                 {isLoading
                   ? 'กำลังดำเนินการ...'
                   : authMode === 'email_login'
-                  ? 'เข้าสู่ระบบและเริ่มใช้งาน'
+                  ? 'เข้าสู่ระบบ'
                   : 'สร้างบัญชีและเริ่มใช้งาน'}
               </span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
             {/* Quick Switch Link between Login & Register */}
-            <div className="text-center pt-2">
+            <div className="text-center pt-1">
               {authMode === 'email_login' ? (
                 <button
                   type="button"
@@ -608,24 +492,12 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
           </form>
         )}
 
-        {/* Security & Database Guarantee Footer */}
-        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-center gap-1.5 text-[11px] text-slate-500 text-center">
+        {/* Security & Privacy Clean Footer */}
+        <div className="pt-2 border-t border-slate-800/60 flex items-center justify-center gap-1.5 text-[11px] text-slate-500 text-center">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-          <span>ข้อมูลผู้ใช้จริงถูกจัดเก็บอย่างปลอดภัยในฐานข้อมูลระบบ Harngun</span>
+          <span>ระบบบัญชี Harngun ปลอดภัยและเป็นส่วนตัว</span>
         </div>
       </div>
-
-      {/* Google Client ID Configuration Modal */}
-      {showConfigModal && (
-        <GoogleConfigModal
-          currentClientId={activeClientId}
-          onClose={() => setShowConfigModal(false)}
-          onSaved={(newId) => {
-            setActiveClientId(newId);
-            if (onUpdateGoogleClientId) onUpdateGoogleClientId(newId);
-          }}
-        />
-      )}
     </div>
   );
 };

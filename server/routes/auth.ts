@@ -161,7 +161,7 @@ authRouter.post('/google', (req, res) => {
       return res.status(400).json({ error: 'กรุณาส่งข้อมูล Google Login' });
     }
 
-    email = email.toLowerCase().trim();
+    const promptpay = profile?.promptpay ? profile.promptpay.trim() : null;
 
     let user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
 
@@ -171,16 +171,17 @@ authRouter.post('/google', (req, res) => {
         SET name = COALESCE(?, name),
             picture = COALESCE(?, picture),
             google_id = COALESCE(?, google_id),
+            promptpay = COALESCE(?, promptpay),
             last_login = datetime('now')
         WHERE email = ?
-      `).run(name, picture, googleId || null, email);
+      `).run(name, picture, googleId || null, promptpay, email);
       user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
     } else {
       const userId = `usr-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
       db.prepare(`
-        INSERT INTO users (id, google_id, email, name, picture, created_at, last_login)
-        VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      `).run(userId, googleId || null, email, name, picture);
+        INSERT INTO users (id, google_id, email, name, picture, promptpay, created_at, last_login)
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).run(userId, googleId || null, email, name, picture, promptpay || '');
       user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
     }
 

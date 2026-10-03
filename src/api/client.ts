@@ -106,6 +106,7 @@ export async function loginWithGoogleProfile(profile: {
   name?: string;
   picture?: string;
   googleId?: string;
+  promptpay?: string;
 }): Promise<{ token: string; user: User }> {
   const res = await fetch(`${BASE_URL}/auth/google`, {
     method: 'POST',
