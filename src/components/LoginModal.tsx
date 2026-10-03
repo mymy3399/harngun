@@ -175,7 +175,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </div>
               <h3 className="font-bold text-base text-white">เข้าสู่ระบบด้วย Google</h3>
               <p className="text-xs text-slate-400 mt-1">
-                บันทึกข้อมูลทริป สมาชิก และบิลของคุณอย่างถาวรในฐานข้อมูล
+                บันทึกข้อมูลกลุ่ม สมาชิก และบิลของคุณอย่างถาวรในฐานข้อมูล
               </p>
             </div>
 

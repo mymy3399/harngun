@@ -33,7 +33,7 @@ export function seedInitialData() {
 
   const seedTx = db.transaction(() => {
     const tripId = 'trip-chiangmai';
-    insertTrip.run(tripId, 'ทริปเที่ยวเชียงใหม่ 🚗✨');
+    insertTrip.run(tripId, 'แชร์ค่าใช้จ่ายประจำวัน 🍜✨');
 
     const members = [
       { id: 'm1', name: 'บอส (Boss)', promptPay: '0812345678', avatar: '😎' },
@@ -46,41 +46,41 @@ export function seedInitialData() {
       insertMember.run(m.id, tripId, m.name, m.promptPay, m.avatar);
     }
 
-    // Expense 1: ค่าที่พัก
+    // Expense 1: ค่าอาหารกลางวัน
     insertExpense.run(
-      'exp-1', tripId, 'ค่าที่พักรีสอร์ท 2 คืน', 'stay',
-      4800, 0, 0, 4800, 'm1', 'EQUAL', '2026-10-02'
+      'exp-1', tripId, 'ค่าอาหารกลางวัน & เครื่องดื่ม', 'food',
+      1200, 0, 0, 1200, 'm1', 'EQUAL', '2026-10-02'
     );
     for (const m of members) {
-      insertSplit.run(`sp-1-${m.id}`, 'exp-1', m.id, 1200, 1);
+      insertSplit.run(`sp-1-${m.id}`, 'exp-1', m.id, 300, 1);
     }
 
-    // Expense 2: มื้อเย็น
+    // Expense 2: ของใช้ส่วนกลาง
     insertExpense.run(
-      'exp-2', tripId, 'มื้อเย็นร้านอาหารเหนือเฮือนเพ็ญ', 'food',
-      1800, 1, 1, 2118.6, 'm2', 'EQUAL', '2026-10-02'
+      'exp-2', tripId, 'ของใช้ส่วนกลาง ซูเปอร์มาร์เก็ต', 'shopping',
+      850, 0, 0, 850, 'm2', 'EQUAL', '2026-10-02'
     );
     for (const m of members) {
-      insertSplit.run(`sp-2-${m.id}`, 'exp-2', m.id, 529.65, 1);
+      insertSplit.run(`sp-2-${m.id}`, 'exp-2', m.id, 212.5, 1);
     }
 
-    // Expense 3: ค่าน้ำมัน
+    // Expense 3: กาแฟและขนมเบรค
     insertExpense.run(
-      'exp-3', tripId, 'ค่าน้ำมันและทางด่วน', 'transport',
-      1400, 0, 0, 1400, 'm3', 'EQUAL', '2026-10-03'
+      'exp-3', tripId, 'กาแฟสดและขนมเบรค', 'food',
+      420, 0, 0, 420, 'm3', 'EQUAL', '2026-10-03'
     );
     for (const m of members) {
-      insertSplit.run(`sp-3-${m.id}`, 'exp-3', m.id, 350, 1);
+      insertSplit.run(`sp-3-${m.id}`, 'exp-3', m.id, 105, 1);
     }
 
-    insertLog.run(`log-1`, tripId, 'บอส สร้างกลุ่ม "ทริปเที่ยวเชียงใหม่ 🚗✨"');
-    insertLog.run(`log-2`, tripId, 'บอส เพิ่มบิล "ค่าที่พักรีสอร์ท 2 คืน" ฿4,800');
-    insertLog.run(`log-3`, tripId, 'พลอย เพิ่มบิล "มื้อเย็นร้านอาหารเหนือเฮือนเพ็ญ" ฿2,118.60');
-    insertLog.run(`log-4`, tripId, 'เมฆ เพิ่มบิล "ค่าน้ำมันและทางด่วน" ฿1,400');
+    insertLog.run(`log-1`, tripId, 'บอส สร้างกลุ่ม "แชร์ค่าใช้จ่ายประจำวัน 🍜✨"');
+    insertLog.run(`log-2`, tripId, 'บอส เพิ่มบิล "ค่าอาหารกลางวัน & เครื่องดื่ม" ฿1,200');
+    insertLog.run(`log-3`, tripId, 'พลอย เพิ่มบิล "ของใช้ส่วนกลาง ซูเปอร์มาร์เก็ต" ฿850');
+    insertLog.run(`log-4`, tripId, 'เมฆ เพิ่มบิล "กาแฟสดและขนมเบรค" ฿420');
   });
 
   seedTx();
-  console.log('✅ Initial Chiang Mai trip seeded successfully');
+  console.log('✅ Initial daily expense group seeded successfully');
 }
 
 /**

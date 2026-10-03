@@ -40,7 +40,7 @@ export const TripSwitcherModal: React.FC<TripSwitcherModalProps> = ({
       setPromptPay('');
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || 'สร้างทริปไม่สำเร็จ');
+      setErrorMsg(err.message || 'สร้างกลุ่มไม่สำเร็จ');
     } finally {
       setIsSubmitting(false);
     }
@@ -76,10 +76,10 @@ export const TripSwitcherModal: React.FC<TripSwitcherModalProps> = ({
 
         <div className="flex items-center gap-2 mb-1">
           <Layers className="w-5 h-5 text-indigo-400" />
-          <h3 className="font-bold text-lg text-white">จัดการทริปของคุณ</h3>
+          <h3 className="font-bold text-lg text-white">จัดการกลุ่มของคุณ</h3>
         </div>
         <p className="text-xs text-slate-400 mb-4">
-          สลับกลุ่มทริป สร้างทริปใหม่ หรือเข้าร่วมทริปของเพื่อน
+          สลับกลุ่มค่าใช้จ่าย สร้างกลุ่มใหม่ หรือเข้าร่วมกลุ่มของเพื่อน
         </p>
 
         {errorMsg && (
@@ -93,14 +93,14 @@ export const TripSwitcherModal: React.FC<TripSwitcherModalProps> = ({
           <form onSubmit={handleCreate} className="space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800 animate-in fade-in">
             <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
               <Plus className="w-3.5 h-3.5" />
-              <span>สร้างทริปใหม่</span>
+              <span>สร้างกลุ่มใหม่</span>
             </h4>
             <div>
-              <label className="block text-[11px] text-slate-300 mb-1">ชื่อทริปหรือกลุ่ม *</label>
+              <label className="block text-[11px] text-slate-300 mb-1">ชื่อกลุ่ม *</label>
               <input
                 type="text"
                 required
-                placeholder="เช่น ทริปทะเลเกาะล้าน 🏝️, โอซาก้า 2026 🎌"
+                placeholder="เช่น หารค่าข้าวออฟฟิศ 🍜, ค่าน้ำไฟคอนโด 🏢, สังสรรค์วันศุกร์ 🍻"
                 value={newTripName}
                 onChange={e => setNewTripName(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
@@ -131,7 +131,7 @@ export const TripSwitcherModal: React.FC<TripSwitcherModalProps> = ({
                 disabled={isSubmitting || !newTripName.trim()}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-2 rounded-xl text-xs font-semibold transition shadow-md"
               >
-                {isSubmitting ? 'กำลังสร้าง...' : 'ยืนยันสร้างทริป'}
+                {isSubmitting ? 'กำลังสร้าง...' : 'ยืนยันสร้างกลุ่ม'}
               </button>
             </div>
           </form>
@@ -184,7 +184,7 @@ export const TripSwitcherModal: React.FC<TripSwitcherModalProps> = ({
                 className="py-2.5 px-3 rounded-2xl border border-dashed border-emerald-500/50 hover:border-emerald-400 text-emerald-300 hover:text-emerald-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-emerald-950/20"
               >
                 <Plus className="w-4 h-4" />
-                <span>สร้างทริปใหม่</span>
+                <span>สร้างกลุ่มใหม่</span>
               </button>
 
               <button
@@ -198,7 +198,7 @@ export const TripSwitcherModal: React.FC<TripSwitcherModalProps> = ({
 
             {trips.length === 0 ? (
               <div className="text-center py-6 text-slate-500 text-xs">
-                คุณยังไม่มีกลุ่มทริป กดปุ่มด้านบนเพื่อสร้างหรือเข้าร่วมทริป
+                คุณยังไม่มีกลุ่มค่าใช้จ่าย กดปุ่มด้านบนเพื่อสร้างหรือเข้าร่วมกลุ่ม
               </div>
             ) : (
               trips.map(trip => {

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db.js';
+import { notifySettlementRecorded } from '../services/notifier.js';
 
 export const settlementsRouter = Router({ mergeParams: true });
 
@@ -57,6 +58,14 @@ settlementsRouter.post('/', (req, res) => {
         `💸 ${fromMember?.name || 'สมาชิก'} โอนเงินเคลียร์ยอด ฿${parseFloat(amount).toLocaleString('th-TH')} ให้ ${toMember?.name || 'สมาชิก'}`
       );
     })();
+
+    // Non-blocking Telegram notification
+    notifySettlementRecorded(tripId, {
+      fromName: fromMember?.name || 'สมาชิก',
+      toName: toMember?.name || 'สมาชิก',
+      amount: parseFloat(amount),
+      note: note || undefined,
+    }).catch(e => console.warn('[SettlementNotifier] Error:', e));
 
     const created = db.prepare(`
       SELECT 

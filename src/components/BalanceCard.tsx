@@ -65,7 +65,7 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
           </div>
 
           <div className="text-right flex-shrink-0">
-            <span className="text-[11px] text-slate-400">ยอดรวมทั้งทริป</span>
+            <span className="text-[11px] text-slate-400">ยอดรวมค่าใช้จ่าย</span>
             <div className="text-sm font-bold text-white mt-0.5 font-mono">
               ฿{formatBaht(totalGroupExpense)}
             </div>

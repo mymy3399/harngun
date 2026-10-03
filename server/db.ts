@@ -139,12 +139,15 @@ export function initDb() {
   safeAlter(`ALTER TABLE members ADD COLUMN role TEXT DEFAULT 'member'`);
   safeAlter(`ALTER TABLE trips ADD COLUMN creator_user_id TEXT`);
   safeAlter(`ALTER TABLE trips ADD COLUMN invite_code TEXT`);
+  safeAlter(`ALTER TABLE trips ADD COLUMN telegram_bot_token TEXT`);
+  safeAlter(`ALTER TABLE trips ADD COLUMN telegram_chat_id TEXT`);
+  safeAlter(`ALTER TABLE trips ADD COLUMN telegram_enabled INTEGER DEFAULT 0`);
 
   safeAlter(`CREATE UNIQUE INDEX IF NOT EXISTS idx_trips_invite ON trips(invite_code)`);
   safeAlter(`CREATE INDEX IF NOT EXISTS idx_members_user ON members(user_id)`);
 
   // Ensure all existing trips have an invite_code
-  const tripsWithoutCode = db.prepare("SELECT id FROM trips WHERE invite_code IS NULL OR invite_code = ''").all() as { id: string }[];
+  const tripsWithoutCode = db.prepare('SELECT id FROM trips WHERE invite_code IS NULL OR LENGTH(TRIM(invite_code)) = 0').all() as { id: string }[];
   if (tripsWithoutCode.length > 0) {
     const updateCode = db.prepare('UPDATE trips SET invite_code = ? WHERE id = ?');
     for (const t of tripsWithoutCode) {

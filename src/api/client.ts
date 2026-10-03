@@ -195,7 +195,7 @@ export async function fetchTripInvitePreview(code: string): Promise<{
   const res = await fetch(`${BASE_URL}/trips/invite/${code}`);
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(err.error || 'ไม่พบทริปตามรหัสเชิญนี้');
+    throw new Error(err.error || 'ไม่พบกลุ่มตามรหัสเชิญนี้');
   }
   return res.json();
 }
@@ -383,3 +383,53 @@ export async function uploadReceiptFile(file: File): Promise<string> {
   const data = await res.json();
   return data.url;
 }
+
+export interface TripNotificationSettings {
+  telegram_bot_token: string;
+  telegram_chat_id: string;
+  telegram_enabled: boolean;
+  has_server_bot: boolean;
+}
+
+export async function fetchNotificationSettings(tripId: string): Promise<TripNotificationSettings> {
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/notifications`);
+  if (!res.ok) throw new Error('Failed to load notification settings');
+  return res.json();
+}
+
+export async function updateNotificationSettings(
+  tripId: string,
+  settings: {
+    telegram_bot_token?: string;
+    telegram_chat_id?: string;
+    telegram_enabled: boolean;
+  }
+): Promise<{ success: boolean }> {
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/notifications`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update notification settings');
+  }
+  return res.json();
+}
+
+export async function testTelegramNotification(
+  tripId: string,
+  payload?: { botToken?: string; chatId?: string }
+): Promise<{ success: boolean; message: string }> {
+  const res = await authFetch(`${BASE_URL}/trips/${tripId}/test-telegram`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {}),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'ส่งข้อความทดสอบไม่สำเร็จ');
+  }
+  return data;
+}
+

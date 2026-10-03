@@ -41,9 +41,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({ trip, onClose }) => {
         <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-2xl w-fit mx-auto mb-2">
           <Share2 className="w-6 h-6" />
         </div>
-        <h3 className="font-bold text-base text-white">เชิญเพื่อนเข้ากลุ่มทริป</h3>
+        <h3 className="font-bold text-base text-white">เชิญเพื่อนเข้ากลุ่ม</h3>
         <p className="text-xs text-slate-400 mt-1">
-          ทริป <strong>"{trip?.name}"</strong>
+          กลุ่ม <strong>"{trip?.name}"</strong>
         </p>
 
         {/* Invite Code Box */}

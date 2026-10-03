@@ -143,7 +143,7 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
             หารกัน <span className="text-emerald-400 font-bold">(Harbgun)</span>
           </h1>
           <p className="text-xs text-slate-400">
-            แอปหารค่าใช้จ่ายทริป ตัดหนี้อัตโนมัติ สแกนจ่ายด้วย Thai PromptPay QR
+            แอปบันทึกและหารค่าใช้จ่ายในชีวิตประจำวัน ตัดหนี้อัตโนมัติ สแกนจ่ายด้วย Thai PromptPay QR
           </p>
         </div>
 
@@ -322,7 +322,7 @@ export const AuthLandingScreen: React.FC<AuthLandingScreenProps> = ({
         {/* Security & Privacy Guarantee Footer */}
         <div className="pt-2 border-t border-slate-800/80 flex items-center justify-center gap-1.5 text-[11px] text-slate-500 text-center">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-          <span>ข้อมูลทริป สมาชิก และประวัติบิลถูกจัดเก็บปลอดภัยเฉพาะสมาชิกกลุ่ม</span>
+          <span>ข้อมูลกลุ่ม สมาชิก และประวัติบิลถูกจัดเก็บปลอดภัยเฉพาะสมาชิกกลุ่ม</span>
         </div>
       </div>
     </div>

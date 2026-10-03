@@ -33,7 +33,7 @@ export const SettleTab: React.FC<SettleTabProps> = ({
           <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-2xl p-6 text-center text-emerald-200 space-y-2">
             <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
             <h4 className="font-bold text-base text-white">ยอดเคลียร์ครบหมดแล้ว!</h4>
-            <p className="text-xs text-emerald-300/80">ไม่มีใครติดหนี้ค้างคาในทริปนี้แล้ว</p>
+            <p className="text-xs text-emerald-300/80">ไม่มีใครติดหนี้ค้างคาในกลุ่มนี้แล้ว</p>
           </div>
         ) : (
           <div className="space-y-2.5">

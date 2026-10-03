@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db.js';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth.js';
+import { notifyMemberJoined, sendTelegramMessage, getTripTelegramConfig } from '../services/notifier.js';
 
 export const tripsRouter = Router();
 
@@ -16,7 +17,7 @@ tripsRouter.get('/invite/:code', (req, res) => {
     `).get(code) as any;
 
     if (!trip) {
-      return res.status(404).json({ error: 'ไม่พบทริปตามรหัสเชิญนี้ หรือลิงก์อาจหมดอายุ' });
+      return res.status(404).json({ error: 'ไม่พบกลุ่มตามรหัสเชิญนี้ หรือลิงก์อาจหมดอายุ' });
     }
 
     res.json(trip);
@@ -80,6 +81,9 @@ tripsRouter.post('/join', (req: AuthenticatedRequest, res) => {
         VALUES (?, ?, ?, datetime('now'))
       `).run(`log-${Date.now()}`, trip.id, `${user.name} เข้าร่วมกลุ่มผ่านลิงก์เชิญ 🎉`);
     })();
+
+    // Non-blocking notification
+    notifyMemberJoined(trip.id, user.name).catch(e => console.warn('[MemberNotifier] Error:', e));
 
     res.status(201).json({
       success: true,
@@ -209,6 +213,93 @@ tripsRouter.delete('/:id', (req: AuthenticatedRequest, res) => {
   }
 });
 
+// GET trip notification settings
+tripsRouter.get('/:id/notifications', (req: AuthenticatedRequest, res) => {
+  try {
+    const row = db.prepare(`
+      SELECT telegram_bot_token, telegram_chat_id, telegram_enabled 
+      FROM trips 
+      WHERE id = ?
+    `).get(req.params.id) as any;
+
+    if (!row) return res.status(404).json({ error: 'Group not found' });
+
+    res.json({
+      telegram_bot_token: row.telegram_bot_token || '',
+      telegram_chat_id: row.telegram_chat_id || '',
+      telegram_enabled: Boolean(row.telegram_enabled),
+      has_server_bot: Boolean(process.env.TELEGRAM_BOT_TOKEN),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT update trip notification settings
+tripsRouter.put('/:id/notifications', (req: AuthenticatedRequest, res) => {
+  try {
+    const { telegram_bot_token, telegram_chat_id, telegram_enabled } = req.body;
+    db.prepare(`
+      UPDATE trips 
+      SET telegram_bot_token = ?, telegram_chat_id = ?, telegram_enabled = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).run(
+      telegram_bot_token ? telegram_bot_token.trim() : null,
+      telegram_chat_id ? telegram_chat_id.trim() : null,
+      telegram_enabled ? 1 : 0,
+      req.params.id
+    );
+
+    res.json({
+      success: true,
+      telegram_enabled: Boolean(telegram_enabled),
+      telegram_chat_id: telegram_chat_id?.trim() || '',
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST test Telegram notification
+tripsRouter.post('/:id/test-telegram', async (req: AuthenticatedRequest, res) => {
+  try {
+    const { botToken, chatId } = req.body;
+    const trip = db.prepare('SELECT name, telegram_bot_token, telegram_chat_id FROM trips WHERE id = ?').get(req.params.id) as any;
+    if (!trip) return res.status(404).json({ error: 'Group not found' });
+
+    const activeToken = (botToken || trip.telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN || '').trim();
+    const activeChatId = (chatId || trip.telegram_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID || '').trim();
+
+    if (!activeToken) {
+      return res.status(400).json({ error: 'กรุณาระบุ Telegram Bot Token' });
+    }
+    if (!activeChatId) {
+      return res.status(400).json({ error: 'กรุณาระบุ Telegram Chat ID (เช่น -100xxxxxxxxxx หรือไอดีของคุณ)' });
+    }
+
+    const testMessage = [
+      `🔔 <b>ทดสอบการเชื่อมต่อแจ้งเตือนสำเร็จ!</b>`,
+      `📂 <b>กลุ่ม:</b> ${trip.name}`,
+      `━━━━━━━━━━━━━━━━━━`,
+      `✅ บอทส่งข้อความแจ้งเตือนเข้า Telegram สำเร็จเรียบร้อย`,
+      `เมื่อสมาชิกเพิ่มบิล, เคลียร์ยอดเงิน หรือเข้าร่วมกลุ่ม ระบบจะส่งสรุปมาที่นี่อัตโนมัติ 🚀`,
+      `━━━━━━━━━━━━━━━━━━`,
+      `⚡ <i>ระบบหารเงิน Harbgun</i>`,
+    ].join('\n');
+
+    const result = await sendTelegramMessage(activeToken, activeChatId, testMessage);
+    if (!result.ok) {
+      return res.status(400).json({
+        error: result.description || 'ส่งข้อความไม่สำเร็จ กรุณาตรวจสอบว่า Bot Token ถูกต้อง และได้ดึงบอทเข้ากลุ่มพร้อมตั้งเป็น Admin แล้ว',
+      });
+    }
+
+    res.json({ success: true, message: 'ส่งข้อความแจ้งเตือนเข้า Telegram สำเร็จ!' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST seed bulk test bills
 tripsRouter.post('/:id/seed-bulk', async (req: AuthenticatedRequest, res) => {
   try {
@@ -220,3 +311,4 @@ tripsRouter.post('/:id/seed-bulk', async (req: AuthenticatedRequest, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+

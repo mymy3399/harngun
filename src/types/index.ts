@@ -7,6 +7,9 @@ export interface Trip {
   name: string;
   creator_user_id?: string;
   invite_code?: string;
+  telegram_enabled?: boolean | number;
+  telegram_chat_id?: string;
+  telegram_bot_token?: string;
   created_at: string;
   updated_at: string;
 }

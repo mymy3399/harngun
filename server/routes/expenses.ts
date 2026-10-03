@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db.js';
 import { generateBulkExpenses } from '../seed.js';
+import { notifyExpenseCreated } from '../services/notifier.js';
 
 export const expensesRouter = Router({ mergeParams: true });
 
@@ -184,6 +185,29 @@ expensesRouter.post('/', (req, res) => {
     });
 
     createTx();
+
+    // Async notification (non-blocking)
+    try {
+      const payer = db.prepare('SELECT name FROM members WHERE id = ?').get(paidById) as any;
+      const splitMemberIds = Object.keys(splits).filter(m => parseFloat(splits[m]) > 0);
+      let splitMemberNames: string[] = [];
+      if (splitMemberIds.length > 0) {
+        const placeholders = splitMemberIds.map(() => '?').join(',');
+        const rows = db.prepare(`SELECT name FROM members WHERE id IN (${placeholders})`).all(...splitMemberIds) as any[];
+        splitMemberNames = rows.map(r => r.name);
+      }
+
+      notifyExpenseCreated(tripId, {
+        title: title.trim(),
+        category,
+        totalAmount: parseFloat(totalAmount),
+        paidByName: payer?.name || creatorName || 'สมาชิก',
+        splitMemberNames,
+        date: finalDate,
+      }).catch(e => console.warn('[ExpenseNotifier] Error:', e));
+    } catch (e) {
+      console.warn('[ExpenseNotifier] Setup error:', e);
+    }
 
     const created = db.prepare(`
       SELECT e.*, m.name as payer_name, m.avatar as payer_avatar

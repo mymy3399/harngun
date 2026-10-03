@@ -31,7 +31,7 @@ export const SummaryTab: React.FC<SummaryTabProps> = ({
         <div>
           <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-            <span>บันทึกค่าใช้จ่ายทริป</span>
+            <span>บันทึกค่าใช้จ่าย</span>
           </h4>
           <p className="text-[11px] text-slate-400 mt-0.5">หารเท่ากัน ระบุยอดตรงตัว หรือตามสัดส่วน</p>
         </div>

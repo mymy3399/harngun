@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db.js';
+import { notifyMemberJoined } from '../services/notifier.js';
 
 export const membersRouter = Router({ mergeParams: true });
 
@@ -38,6 +39,9 @@ membersRouter.post('/', (req, res) => {
         VALUES (?, ?, ?, datetime('now'))
       `).run(`log-${Date.now()}`, tripId, `เพิ่มสมาชิก "${name.trim()}" เข้ากลุ่ม`);
     })();
+
+    // Non-blocking Telegram notification
+    notifyMemberJoined(tripId, name.trim()).catch(e => console.warn('[MemberNotifier] Error:', e));
 
     const newMember = db.prepare('SELECT * FROM members WHERE id = ?').get(memberId);
     res.status(201).json(newMember);

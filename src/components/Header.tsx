@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Share2, Check, Smartphone, X, Layers, Edit3, Plus, User as UserIcon } from 'lucide-react';
+import { Share2, Check, Smartphone, X, Layers, Edit3, Plus, User as UserIcon, Bell } from 'lucide-react';
 import { Member, Trip, User } from '../types';
 
 interface HeaderProps {
@@ -12,6 +12,7 @@ interface HeaderProps {
   onOpenTripSwitcher: () => void;
   onOpenShareModal: () => void;
   onOpenAddExpense: () => void;
+  onOpenNotificationSettings: () => void;
   onOpenLogin: () => void;
 }
 
@@ -25,6 +26,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenTripSwitcher,
   onOpenShareModal,
   onOpenAddExpense,
+  onOpenNotificationSettings,
   onOpenLogin,
 }) => {
   const [editingTitle, setEditingTitle] = useState(false);
@@ -100,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="group flex items-center gap-1.5 cursor-pointer"
               >
                 <h1 className="font-bold text-base text-white truncate group-hover:text-emerald-400 transition">
-                  {currentTrip?.name || 'กำลังโหลดทริป...'}
+                  {currentTrip?.name || 'กำลังโหลดกลุ่ม...'}
                 </h1>
                 <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 flex items-center gap-0.5">
                   <Edit3 className="w-2.5 h-2.5" />
@@ -195,9 +197,21 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onOpenTripSwitcher}
               className="flex items-center gap-1 bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/80 px-2 py-1.5 rounded-xl text-xs font-medium transition active:scale-95 shadow-sm"
-              title="สลับทริปหรือสร้างทริปใหม่"
+              title="สลับกลุ่มหรือสร้างกลุ่มใหม่"
             >
               <Layers className="w-3.5 h-3.5 text-indigo-400" />
+            </button>
+
+            {/* Notification settings button */}
+            <button
+              onClick={onOpenNotificationSettings}
+              className="relative flex items-center gap-1 bg-slate-800/80 hover:bg-slate-700 text-sky-400 border border-slate-700/80 px-2 py-1.5 rounded-xl text-xs font-medium transition active:scale-95 shadow-sm"
+              title="ตั้งค่าแจ้งเตือน Telegram & มือถือ"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              {Boolean(currentTrip?.telegram_enabled) && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900 animate-pulse"></span>
+              )}
             </button>
 
             {/* Share button */}

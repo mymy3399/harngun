@@ -29,6 +29,8 @@ import { TripSwitcherModal } from './components/TripSwitcherModal';
 import { ShareModal } from './components/ShareModal';
 import { LoginModal } from './components/LoginModal';
 import { AuthLandingScreen } from './components/AuthLandingScreen';
+import { NotificationSettingsModal } from './components/NotificationSettingsModal';
+import { showDeviceNotification } from './utils/notifications';
 
 export default function App() {
   // Auth & Session State
@@ -85,6 +87,7 @@ export default function App() {
   const [showReceiptViewer, setShowReceiptViewer] = useState<{ url: string; title: string } | null>(null);
   const [showTripSwitcher, setShowTripSwitcher] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [isSeedingBulk, setIsSeedingBulk] = useState(false);
 
   // Active Trip object
@@ -294,6 +297,9 @@ export default function App() {
       ...payload,
       creatorName: authUser?.name || currentUser?.name || 'สมาชิก',
     });
+    showDeviceNotification(`เพิ่มบิล "${payload.title}" ฿${payload.totalAmount.toLocaleString('th-TH')}`, {
+      body: `กลุ่ม: ${currentTrip?.name || 'บันทึกค่าใช้จ่าย'}`,
+    });
     await Promise.all([loadExpenses(), refreshTripData(), loadTrips()]);
   };
 
@@ -318,6 +324,9 @@ export default function App() {
       tx.amount,
       'โอนผ่าน PromptPay QR'
     );
+    showDeviceNotification(`เคลียร์ยอดเงินสำเร็จ ฿${tx.amount.toLocaleString('th-TH')}`, {
+      body: `${tx.fromM?.name || 'สมาชิก'} ➔ โอนให้ ➔ ${tx.toM?.name || 'สมาชิก'}`,
+    });
     await refreshTripData();
   };
 
@@ -378,6 +387,7 @@ export default function App() {
           onOpenTripSwitcher={() => setShowTripSwitcher(true)}
           onOpenShareModal={() => setShowShareModal(true)}
           onOpenAddExpense={() => setShowAddModal(true)}
+          onOpenNotificationSettings={() => setShowNotificationModal(true)}
           onOpenLogin={() => setShowLoginModal(true)}
         />
 
@@ -417,7 +427,7 @@ export default function App() {
 
           {activeTab === 'expenses' && (
             <ExpenseList
-              tripName={currentTrip?.name || 'ทริป'}
+              tripName={currentTrip?.name || 'กลุ่ม'}
               expenses={expenses}
               members={members}
               balances={balances}
@@ -512,6 +522,18 @@ export default function App() {
           <ShareModal
             trip={currentTrip}
             onClose={() => setShowShareModal(false)}
+          />
+        )}
+
+        {showNotificationModal && currentTrip && (
+          <NotificationSettingsModal
+            tripId={currentTrip.id}
+            tripName={currentTrip.name}
+            onClose={() => setShowNotificationModal(false)}
+            onUpdated={() => {
+              loadTrips();
+              refreshTripData();
+            }}
           />
         )}
 
