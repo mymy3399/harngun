@@ -367,6 +367,7 @@ export default function App() {
       <AuthLandingScreen
         inviteCode={urlInviteCode}
         googleClientId={googleClientId}
+        onUpdateGoogleClientId={setGoogleClientId}
         onAuthSuccess={handleAuthSuccess}
       />
     );
@@ -546,6 +547,7 @@ export default function App() {
           <LoginModal
             currentUser={authUser}
             googleClientId={googleClientId}
+            onUpdateGoogleClientId={setGoogleClientId}
             onLoginSuccess={handleAuthSuccess}
             onLogout={handleLogout}
             onClose={() => setShowLoginModal(false)}

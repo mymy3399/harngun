@@ -1,7 +1,13 @@
 import { Router } from 'express';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { db } from '../db.js';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const authRouter = Router();
 
@@ -240,4 +246,33 @@ authRouter.get('/config', (req, res) => {
   res.json({
     googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   });
+});
+
+// POST /api/auth/config/google-client-id - Save Google Client ID
+authRouter.post('/config/google-client-id', (req, res) => {
+  try {
+    const { googleClientId } = req.body;
+    const cleanId = (googleClientId || '').trim();
+
+    process.env.GOOGLE_CLIENT_ID = cleanId;
+
+    // Persist to .env file
+    const envPath = path.resolve(__dirname, '../../.env');
+    if (fs.existsSync(envPath)) {
+      let envContent = fs.readFileSync(envPath, 'utf8');
+      if (envContent.includes('GOOGLE_CLIENT_ID=')) {
+        envContent = envContent.replace(/GOOGLE_CLIENT_ID=.*/g, `GOOGLE_CLIENT_ID=${cleanId}`);
+      } else {
+        envContent += `\nGOOGLE_CLIENT_ID=${cleanId}\n`;
+      }
+      fs.writeFileSync(envPath, envContent, 'utf8');
+    }
+
+    res.json({
+      success: true,
+      googleClientId: cleanId,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });

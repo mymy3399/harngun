@@ -154,6 +154,19 @@ export async function fetchAuthConfig(): Promise<{ googleClientId: string }> {
   }
 }
 
+export async function saveGoogleClientId(googleClientId: string): Promise<{ success: boolean; googleClientId: string }> {
+  const res = await fetch(`${BASE_URL}/auth/config/google-client-id`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ googleClientId }),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'Failed to save Google Client ID');
+  }
+  return res.json();
+}
+
 // Trips API
 export async function fetchTrips(): Promise<Trip[]> {
   const res = await authFetch(`${BASE_URL}/trips`);
